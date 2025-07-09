@@ -1,0 +1,352 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block content %}
+<div class="content-header">
+    <div class="d-flex justify-content-between align-items-center">
+        <h2>
+            <i class="bi bi-currency-dollar me-2"></i>
+            {{ stock.name }} ({{ stock.symbol }})
+        </h2>
+        <div>
+            <a href="{% url 'edit_stock' stock.id %}" class="btn btn-outline-primary me-2">
+                <i class="bi bi-pencil"></i> Edit
+            </a>
+            <a href="{% url 'stock_list' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid mt-4">
+    <div class="row">
+        <!-- Main Metrics Card -->
+        <div class="col-lg-8 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-speedometer2 me-2"></i>Key Metrics</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <div class="metric-card bg-light p-3 rounded border">
+                                <div class="text-muted small">Average Price</div>
+                                <div class="h4 fw-bold">Rs. {{ stock.avg_price|floatformat:2|intcomma }}</div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="metric-card bg-light p-3 rounded border">
+                                <div class="text-muted small">Total Quantity</div>
+                                <div class="h4 fw-bold">{{ stock.total_quantity|intcomma }}</div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="metric-card bg-light p-3 rounded border">
+                                <div class="text-muted small">Total Investment</div>
+                                <div class="h4 fw-bold">Rs. {{ stock.total_price|floatformat:2|intcomma }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Portfolio Allocation Card -->
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="bi bi-pie-chart me-2"></i>Portfolio Allocation</h5>
+                </div>
+                <div class="card-body d-flex flex-column justify-content-center">
+                    <div class="text-center">
+                        <div class="mx-auto" style="width: 150px; height: 150px;">
+                            <canvas id="allocationChart"></canvas>
+                        </div>
+                        <div class="h3 mt-3">{{ stock.portfolio_percentage|floatformat:2 }}%</div>
+                        <div class="text-muted">of total portfolio</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Risk/Reward Section -->
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0"><i class="bi bi-exclamation-triangle me-2"></i>Risk Management</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="metric-card bg-danger bg-opacity-10 p-3 rounded border border-danger">
+                                <div class="text-muted small">Stop Loss</div>
+                                <div class="h4 fw-bold text-danger">{{ stock.stop_loss|floatformat:2|intcomma|default:"-" }}</div>
+                                {% if stock.stop_loss %}
+                                <div class="small text-muted mt-1">
+                                    Potential loss: Rs. {{ stock.amount_loss_after_stop_loss|floatformat:2|intcomma }} ({{ stock.percentage_loss_after_stop_loss|floatformat:2 }}%)
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="metric-card bg-light p-3 rounded border">
+                                <div class="text-muted small">Free Float</div>
+                                <div class="h4 fw-bold">{{ stock.free_float|floatformat:2|intcomma|default:"-" }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="bi bi-bullseye me-2"></i>Profit Targets</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="metric-card bg-success bg-opacity-10 p-3 rounded border border-success">
+                                <div class="text-muted small">Target 1</div>
+                                <div class="h4 fw-bold text-success">{{ stock.target1|floatformat:2|intcomma|default:"-" }}</div>
+                                {% if stock.target1 %}
+                                <div class="small text-muted mt-1">
+                                    Potential profit: Rs. {{ stock.profit_after_target1|floatformat:2|intcomma }}
+                                    <br>RRR: {{ stock.RRR1|default:"-" }}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="metric-card bg-success bg-opacity-10 p-3 rounded border border-success">
+                                <div class="text-muted small">Target 2</div>
+                                <div class="h4 fw-bold text-success">{{ stock.target2|floatformat:2|intcomma|default:"-" }}</div>
+                                {% if stock.target2 %}
+                                <div class="small text-muted mt-1">
+                                    Potential profit: Rs. {{ stock.profit_after_target2|floatformat:2|intcomma }}
+                                    <br>RRR: {{ stock.RRR2|default:"-" }}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-12 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-purple text-white">
+                    <h5 class="mb-0"><i class="bi bi-graph-up me-2"></i>Current Market Situation</h5>
+                </div>
+                <div class="card-body">
+                    <form id="marketPriceForm" method="post" action="{% url 'update_market_price' stock.id %}">
+                        {% csrf_token %}
+                        <div class="row">
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label">Market Price</label>
+                                <div class="input-group">
+                                    <input type="number" step="0.01" class="form-control" name="market_price" 
+                                           value="{{ stock.current_market_price|default:'' }}" placeholder="Enter price">
+                                    <button class="btn btn-outline-secondary" type="button" id="fetchMarketPrice">
+                                        <span id="fetchButtonText">
+                                            <i class="bi bi-cloud-download"></i> Fetch
+                                        </span>
+                                        <span id="fetchButtonSpinner" class="spinner-border spinner-border-sm d-none" role="status">
+                                            <span class="visually-hidden">Loading...</span>
+                                        </span>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <div class="metric-card bg-light p-3 rounded border">
+                                    <div class="text-muted small">Market Value</div>
+                                    <div class="h4 fw-bold" id="marketValue">
+                                        {% if stock.current_market_price %}
+                                            ${{ stock.market_value|floatformat:2|intcomma }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <div class="metric-card bg-light p-3 rounded border">
+                                    <div class="text-muted small">Gross P&L</div>
+                                    <div class="h4 fw-bold {% if stock.gross_pl > 0 %}text-success{% elif stock.gross_pl < 0 %}text-danger{% endif %}" id="grossPL">
+                                        {% if stock.current_market_price %}
+                                            ${{ stock.gross_pl|floatformat:2|intcomma }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <div class="metric-card bg-light p-3 rounded border">
+                                    <div class="text-muted small">Net P&L (after 15% tax)</div>
+                                    <div class="h4 fw-bold {% if stock.net_pl > 0 %}text-success{% elif stock.net_pl < 0 %}text-danger{% endif %}" id="netPL">
+                                        {% if stock.current_market_price %}
+                                            ${{ stock.net_pl|floatformat:2|intcomma }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-end">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-save"></i> Update
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loader Element -->
+<div id="loader" class="d-none text-center">
+    <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+    </div>
+</div>
+
+<!-- Chart.js for Allocation Pie Chart -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const ctx = document.getElementById('allocationChart').getContext('2d');
+        const allocation = parseFloat("{{ stock.portfolio_percentage|default:'0' }}"); // Fallback to 0 if not defined
+        
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['This Stock', 'Rest of Portfolio'],
+                datasets: [{
+                    data: [allocation, 100 - allocation],
+                    backgroundColor: [
+                        'rgba(54, 162, 235, 0.8)',
+                        'rgba(200, 200, 200, 0.5)'
+                    ],
+                    borderColor: [
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(200, 200, 200, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '70%',
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+    });
+
+
+    // Fetch market price button handler with loading state
+    document.getElementById('fetchMarketPrice').addEventListener('click', function() {
+        const button = this;
+        const buttonText = document.getElementById('fetchButtonText');
+        const spinner = document.getElementById('fetchButtonSpinner');
+        
+        // Show loading state
+        button.disabled = true;
+        buttonText.classList.add('d-none');
+        spinner.classList.remove('d-none');
+        
+        fetch("{% url 'fetch_market_price' stock.id %}")
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.querySelector('input[name="market_price"]').value = data.market_price;
+                    calculateMarketValues(data.market_price);
+                } else {
+                    alert('Error fetching market price: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to fetch market price');
+            })
+            .finally(() => {
+                // Restore button state
+                button.disabled = false;
+                buttonText.classList.remove('d-none');
+                spinner.classList.add('d-none');
+            });
+    });
+
+    // Calculate market values when price changes
+    document.querySelector('input[name="market_price"]').addEventListener('input', function() {
+        const price = parseFloat(this.value);
+        if (!isNaN(price)) {
+            calculateMarketValues(price);
+        }
+    });
+
+    function calculateMarketValues(marketPrice) {
+        // const quantity = {{ stock.total_quantity }};
+        // const avgPrice = {{ stock.avg_price }};
+        const quantity = parseFloat("{{ stock.total_quantity|default:'0' }}");
+        const avgPrice = parseFloat("{{ stock.avg_price|default:'0' }}");
+        const marketValue = marketPrice * quantity;
+        const grossPL = marketValue - (avgPrice * quantity);
+        const netPL = grossPL > 0 ? grossPL * 0.85 : grossPL; // 15% tax on profits
+        
+        document.getElementById('marketValue').textContent = 'Rs. ' + marketValue.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        document.getElementById('grossPL').textContent = 'Rs. ' + grossPL.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        document.getElementById('netPL').textContent = 'Rs. ' + netPL.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        
+        // Update colors based on profit/loss
+        document.getElementById('grossPL').className = 'h4 fw-bold ' + 
+            (grossPL > 0 ? 'text-success' : (grossPL < 0 ? 'text-danger' : ''));
+        document.getElementById('netPL').className = 'h4 fw-bold ' + 
+            (netPL > 0 ? 'text-success' : (netPL < 0 ? 'text-danger' : ''));
+    }
+</script>
+
+<style>
+    .metric-card {
+        transition: transform 0.2s;
+        height: 100%;
+    }
+    .metric-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .card-header {
+        font-weight: 600;
+    }
+    .bg-purple {
+        background-color: #6f42c1;
+    }
+    #marketPriceForm .form-control {
+        height: calc(1.5em + 1rem + 2px);
+    }
+
+    #fetchMarketPrice {
+        position: relative;
+        min-width: 90px; /* Prevent button from shrinking when loading */
+    }
+    #fetchButtonSpinner {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+    }
+</style>
+{% endblock %}

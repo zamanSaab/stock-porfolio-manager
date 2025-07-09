@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="content-header">
+    <div class="d-flex justify-content-between align-items-center">
+        <h2><i class="bi bi-exclamation-triangle me-2"></i>Delete Broker</h2>
+        <a href="{% url 'broker_list' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Back to Brokers
+        </a>
+    </div>
+</div>
+
+<div class="table-container">
+    <div class="alert alert-danger" role="alert">
+        <h4 class="alert-heading"><i class="bi bi-exclamation-octagon-fill me-2"></i>Warning!</h4>
+        <p>You are about to delete the broker: <strong>{{ broker.name }}</strong>. This action cannot be undone.</p>
+        <hr>
+        <p class="mb-0">All associated transactions with this broker will remain but will no longer be linked to a valid broker.</p>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>Broker Details</h5>
+        </div>
+        <div class="card-body">
+            <dl class="row">
+                <dt class="col-sm-3">Name</dt>
+                <dd class="col-sm-9">{{ broker.name }}</dd>
+
+                <dt class="col-sm-3">Code</dt>
+                <dd class="col-sm-9">{{ broker.code }}</dd>
+
+                <dt class="col-sm-3">Total Amount</dt>
+                <dd class="col-sm-9">${{ broker.total_amount }}</dd>
+
+                <dt class="col-sm-3">Free Amount</dt>
+                <dd class="col-sm-9">${{ broker.free_amount }}</dd>
+            </dl>
+        </div>
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+            <a href="{% url 'broker_list' %}" class="btn btn-secondary me-2">
+                <i class="bi bi-x-circle me-1"></i> Cancel
+            </a>
+            <button type="submit" class="btn btn-danger">
+                <i class="bi bi-trash me-1"></i> Confirm Delete
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

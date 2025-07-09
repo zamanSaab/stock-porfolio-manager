@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="content-header">
+    <div class="d-flex justify-content-between align-items-center">
+        <h2><i class="bi bi-pencil-square me-2"></i>Edit Broker</h2>
+        <a href="{% url 'broker_list' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Back to Brokers
+        </a>
+    </div>
+</div>
+
+<div class="table-container">
+    <form method="post">
+        {% csrf_token %}
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                {{ form.name|as_crispy_field }}
+            </div>
+            <div class="col-md-6 mb-3">
+                {{ form.code|as_crispy_field }}
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                {{ form.total_amount|as_crispy_field }}
+            </div>
+            <div class="col-md-6 mb-3">
+                {{ form.free_amount|as_crispy_field }}
+            </div>
+        </div>
+        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+            <button type="submit" class="btn btn-primary me-2">
+                <i class="bi bi-save me-1"></i> Update Broker
+            </button>
+            <a href="{% url 'delete_broker' broker.id %}" class="btn btn-danger">
+                <i class="bi bi-trash me-1"></i> Delete
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}

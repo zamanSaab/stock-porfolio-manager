@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="content-header">
+    <div class="d-flex justify-content-between align-items-center">
+        <h2>
+            <i class="bi bi-pencil-square me-2"></i>
+            {% if form.instance.pk %}Edit{% else %}Add{% endif %} Stock
+        </h2>
+        <a href="{% if form.instance.pk %}{% url 'stock_details' form.instance.pk %}{% else %}{% url 'stocks' %}{% endif %}" 
+           class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Cancel
+        </a>
+    </div>
+</div>
+
+<div class="table-container">
+    <form method="post">
+        {% csrf_token %}
+        
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card shadow-sm h-100">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>Basic Information</h5>
+                    </div>
+                    <div class="card-body ">
+                        <div class="mt-2 fw-bold">
+                            {{ form.name|as_crispy_field }}
+                        </div>
+                        <div class="mt-2 fw-bold">
+                            {{ form.symbol|as_crispy_field }}
+                        </div>
+                        <div class="mt-2 fw-bold">
+                            {{ form.free_float|as_crispy_field }}
+                        </div>
+                        <div class="mt-2 fw-bold">
+                            {{ form.tax|as_crispy_field }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card shadow-sm h-100">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0"><i class="bi bi-bullseye me-2"></i>Target Prices</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mt-2">
+                            <div class="col-md-6 fw-bold text-success">
+                                {{ form.target1|as_crispy_field }}
+                            </div>
+                            <div class="col-md-6 fw-bold text-success">
+                                {{ form.target2|as_crispy_field }}
+                            </div>
+                        </div>
+
+                        <div class="row mt-3">
+                            <div class="col-md-12 fw-bold text-danger">
+                                {{ form.stop_loss|as_crispy_field }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-12">
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    {% if form.instance.pk %}
+                    <!-- <a href="" class="btn btn-danger me-2">
+                        <i class="bi bi-trash me-1"></i> Delete Stock
+                    </a> -->
+                    {% endif %}
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save me-1"></i> {% if form.instance.pk %}Update{% else %}Create{% endif %} Stock
+                    </button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<style>
+    .table-container {
+        background-color: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 0.15rem 0.5rem rgba(0, 0, 0, 0.05);
+        padding: 1.5rem;
+    }
+    .card {
+        border: none;
+        border-radius: 0.5rem;
+    }
+    .card-header {
+        border-radius: 0.5rem 0.5rem 0 0 !important;
+    }
+    .form-control:disabled {
+        background-color: #f8f9fa;
+    }
+</style>
+
+<script>
+    // Calculate RRR when stop loss or targets change
+    document.addEventListener('DOMContentLoaded', function() {
+        const stopLossField = document.getElementById('id_stop_loss');
+        const target1Field = document.getElementById('id_target1');
+        const target2Field = document.getElementById('id_target2');
+        const avgPrice = parseFloat("{{ form.instance.avg_price|default:0 }}");
+        
+        function calculateRRR(stopLoss, target, avg) {
+            if (stopLoss && target && avg) {
+                return ((target - avg) / (avg - stopLoss)).toFixed(2);
+            }
+            return null;
+        }
+        
+        function updateRRRDisplay() {
+            const stopLoss = parseFloat(stopLossField.value);
+            const target1 = parseFloat(target1Field.value);
+            const target2 = parseFloat(target2Field.value);
+            
+            if (stopLoss && target1 && avgPrice) {
+                const rrr1 = calculateRRR(stopLoss, target1, avgPrice);
+                const rrr1Element = document.querySelector('#id_target1').parentElement.querySelector('.small');
+                if (rrr1Element) rrr1Element.textContent = 'RRR: ' + rrr1;
+            }
+            
+            if (stopLoss && target2 && avgPrice) {
+                const rrr2 = calculateRRR(stopLoss, target2, avgPrice);
+                const rrr2Element = document.querySelector('#id_target2').parentElement.querySelector('.small');
+                if (rrr2Element) rrr2Element.textContent = 'RRR: ' + rrr2;
+            }
+        }
+        
+        if (stopLossField) stopLossField.addEventListener('change', updateRRRDisplay);
+        if (target1Field) target1Field.addEventListener('change', updateRRRDisplay);
+        if (target2Field) target2Field.addEventListener('change', updateRRRDisplay);
+    });
+</script>
+{% endblock %}

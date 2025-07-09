@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+{% load humanize %}
+
+{% block content %}
+<div class="content-header">
+    <div class="d-flex justify-content-between align-items-center">
+        <h2><i class="bi bi-currency-dollar me-2"></i>Stocks</h2>
+        <a href="{% url 'add_transaction' %}" class="btn btn-primary">
+            <i class="bi bi-plus-circle me-1"></i> Add Transaction
+        </a>
+    </div>
+</div>
+
+<div class="table-container">
+    {% if stocks %}
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th><i class="bi bi-building me-1"></i> Name</th>
+                    <th class="text-end"><i class="bi bi-currency-dollar me-1"></i> Avg Price</th>
+                    <th class="text-end"><i class="bi bi-123 me-1"></i> Quantity</th>
+                    <th class="text-end"><i class="bi bi-currency-dollar me-1"></i> Amount</th>
+                    <th class="text-end"><i class="bi bi-graph-down me-1"></i> Stop Loss</th>
+                    <th class="text-end"><i class="bi bi-bullseye me-1"></i> Target 1</th>
+                    <th class="text-end"><i class="bi bi-bullseye me-1"></i> Target 2</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for stock in stocks %}
+                <tr>
+                    <td>
+                        <div class="d-flex align-items-center">
+                            <div class="bg-success bg-opacity-10 rounded-circle p-2 me-3">
+                                <strong class="">{{ stock.symbol|default:"-" }}</strong>
+                            </div>
+                            <!-- <strong>{{ stock.name|default:"-" }}</strong> -->
+                        </div>
+                    </td>
+                    <td class="text-end amount-negative">{{ stock.avg_price|floatformat:2|intcomma|default:"-" }}</td>
+                    <td class="text-end amount-negative">{{ stock.total_quantity|default:"-" }}</td>
+                    <td class="text-end amount-negative">{{ stock.total_price|floatformat:2|intcomma|default:"-" }}</td>
+                    <td class="text-end fw-bold text-danger">{{ stock.stop_loss|floatformat:2|intcomma|default:"-" }}</td>
+                    <td class="text-end fw-bold text-success">{{ stock.target1|floatformat:2|intcomma|default:"-" }}</td>
+                    <td class="text-end fw-bold text-success">{{ stock.target2|floatformat:2|intcomma|default:"-" }}</td>
+                    <td class="text-end align-top">
+                        <a href="{% url 'stock_details' stock.id %}" class="btn btn-sm btn-outline-primary me-1">
+                            <i class="bi bi-eye"></i> Details
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="alert alert-info d-flex align-items-center" role="alert">
+        <i class="bi bi-info-circle-fill me-2"></i>
+        <div>
+            No stocks found. <a href="{% url 'add_transaction' %}" class="alert-link">Add your first stock transaction</a> to get started.
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

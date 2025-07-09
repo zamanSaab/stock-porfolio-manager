@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="content-header">
+    <div class="d-flex justify-content-between align-items-center">
+        <h2><i class="bi bi-exclamation-triangle me-2"></i>Delete Transaction</h2>
+        <a href="{% url 'transaction_list' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Back to Transactions
+        </a>
+    </div>
+</div>
+
+<div class="table-container">
+    <div class="alert alert-danger" role="alert">
+        <h4 class="alert-heading"><i class="bi bi-exclamation-octagon-fill me-2"></i>Warning!</h4>
+        <p>You are about to delete this transaction:</p>
+        <ul class="mb-2">
+            <li><strong>Stock:</strong> {{ transaction.stock.name }}</li>
+            <li><strong>Type:</strong> 
+                <span class="badge {% if transaction.transaction_type == 'buy' %}bg-success{% else %}bg-danger{% endif %}">
+                    {{ transaction.get_transaction_type_display }}
+                </span>
+            </li>
+            <li><strong>Quantity:</strong> {{ transaction.quantity }}</li>
+            <li><strong>Price:</strong> ${{ transaction.price }}</li>
+        </ul>
+        <hr>
+        <p class="mb-0">This action cannot be undone and will permanently remove this transaction record.</p>
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+            <a href="{% url 'transaction_list' %}" class="btn btn-secondary me-2">
+                <i class="bi bi-x-circle me-1"></i> Cancel
+            </a>
+            <button type="submit" class="btn btn-danger">
+                <i class="bi bi-trash me-1"></i> Confirm Delete
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}
