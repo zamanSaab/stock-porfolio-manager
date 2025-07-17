@@ -41,7 +41,9 @@ class Stock(models.Model):
 
     @property
     def portfolio_percentage(self):
-        total_portfolio_value = sum(stock.total_price for stock in Stock.objects.all())
+        # Filter stocks with non-zero total_quantity
+        remaining_stocks = [stock for stock in Stock.objects.all() if stock.total_quantity > 0]
+        total_portfolio_value = sum(stock.total_price for stock in remaining_stocks)
         if total_portfolio_value > 0:
             return round((self.total_price / total_portfolio_value) * 100, 2)
         return 0
