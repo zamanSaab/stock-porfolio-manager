@@ -83,9 +83,13 @@ STATIC_URL = '/static/'
 
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['127.0.0.1', 'zaman.pythonanywhere.com']
 
 SECRET_KEY = 'your-secret-key-here'
 
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap4"
 CRISPY_TEMPLATE_PACK = "bootstrap4"
+
+
+LOGIN_URL = "/login/"
+LOGIN_REDIRECT_URL = "/"
