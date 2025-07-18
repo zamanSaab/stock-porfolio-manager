@@ -1,4 +1,5 @@
 from django.urls import path
+from django.contrib.auth import views as auth_views
 from . import views
 
 urlpatterns = [
@@ -19,4 +20,16 @@ urlpatterns = [
     path('stocks/add/', views.add_stock, name='add_stock'),
     path('earnings-history/', views.earnings_history, name='earnings_history'),
     path('stocks/<int:pk>/transactions/', views.stock_transaction_history, name='stock_transaction_history'),
+    path('login/', auth_views.LoginView.as_view(template_name='login.html'), name='login'),
+    path('logout/', auth_views.LogoutView.as_view(next_page='login'), name='logout'),
+    path('signup/', views.signup, name='signup'),
+    path('password-reset/', auth_views.PasswordResetView.as_view(template_name='password_reset.html'), name='password_reset'),
+    path('password-reset/done/', auth_views.PasswordResetDoneView.as_view(template_name='password_reset_done.html'), name='password_reset_done'),
+    path('reset/<uidb64>/<token>/', auth_views.PasswordResetConfirmView.as_view(template_name='password_reset_confirm.html'), name='password_reset_confirm'),
+    path('reset/done/', auth_views.PasswordResetCompleteView.as_view(template_name='password_reset_complete.html'), name='password_reset_complete'),
+
+    path('dividends/', views.dividend_list, name='dividend_list'),
+    path('dividends/add/', views.add_dividend, name='add_dividend'),
+    path('dividends/<int:pk>/edit/', views.edit_dividend, name='edit_dividend'),
+    path('dividends/<int:pk>/delete/', views.delete_dividend, name='delete_dividend'),
 ]

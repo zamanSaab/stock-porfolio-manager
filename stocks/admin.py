@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Broker, Stock, Transaction
+from .models import Broker, Stock, Transaction, Dividend
 
 @admin.register(Stock)
 class StockAdmin(admin.ModelAdmin):
@@ -9,5 +9,11 @@ class StockAdmin(admin.ModelAdmin):
 @admin.register(Transaction)
 class TransactionAdmin(admin.ModelAdmin):
     list_display = ('stock', 'quantity', 'broker', 'price', 'transaction_type')
+
+@admin.register(Dividend)
+class DividendAdmin(admin.ModelAdmin):
+    list_display = ('stock', 'amount', 'date', 'impact_average')
+    list_filter = ('impact_average', 'date')
+    search_fields = ('stock__name', 'amount')
 
 admin.site.register(Broker)

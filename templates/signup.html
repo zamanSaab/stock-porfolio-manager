@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up | Stock Portfolio</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --primary: #566387;
+            --primary-light: rgba(78, 115, 223, 0.1);
+            --success: #1cc88a;
+            --success-light: rgba(28, 200, 138, 0.1);
+            --purple: #6f42c1;
+            --purple-light: rgba(111, 66, 193, 0.1);
+            --form-text: #2b3035;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1b1e20 0%, #566387 100%);
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+        }
+        
+        .auth-card {
+            border: none;
+            border-radius: 0.5rem;
+            overflow: hidden;
+            background-color: white;
+            box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        
+        .auth-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 1rem 2rem rgba(0, 0, 0, 0.15) !important;
+        }
+        
+        .auth-card-header {
+            background: linear-gradient(135deg, #2b3035 0%, #566387 100%);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
+        
+        .auth-card-body {
+            padding: 2rem;
+        }
+        
+        .auth-card-footer {
+            padding: 1.5rem;
+            background-color: #f8f9fa;
+            border-top: 1px solid rgba(0, 0, 0, 0.05);
+            text-align: center;
+        }
+        
+        .btn-primary {
+            background-color: var(--primary);
+            border-color: var(--primary);
+        }
+        
+        .btn-primary:hover {
+            background-color: #3b4147;
+            border-color: #2b3035;
+        }
+        
+        .form-control:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 0.25rem rgba(78, 115, 223, 0.25);
+        }
+        
+        .input-group-text {
+            background-color: #f8f9fa;
+        }
+        
+        .toggle-password {
+            cursor: pointer;
+        }
+        
+        .password-strength {
+            margin-top: 0.5rem;
+        }
+        
+        .app-logo {
+            font-weight: 600;
+            font-size: 1.5rem;
+            color: white;
+        }
+        
+        .app-logo i {
+            color: var(--primary);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-6 col-md-8">
+                <div class="auth-card">
+                    <div class="auth-card-header">
+                        <h3 class="mb-0"><i class="bi bi-bar-chart-line me-2"></i>Stock Portfolio</h3>
+                        <p class="mb-0 mt-2">Create your account</p>
+                    </div>
+                    
+                    <div class="auth-card-body">
+                        {% if form.errors %}
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <strong>Error!</strong> Please correct the errors below.
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                        {% endif %}
+                        
+                        <form method="POST" action="{% url 'signup' %}" class="needs-validation" novalidate>
+                            {% csrf_token %}
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="id_first_name" class="form-label">First Name</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="bi bi-person-fill"></i></span>
+                                        <input type="text" name="first_name" id="id_first_name" class="form-control" required>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6 mb-3">
+                                    <label for="id_last_name" class="form-label">Last Name</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="bi bi-person-fill"></i></span>
+                                        <input type="text" name="last_name" id="id_last_name" class="form-control" required>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="id_username" class="form-label">Username</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="bi bi-person-badge-fill"></i></span>
+                                    <input type="text" name="username" id="id_username" class="form-control" required>
+                                </div>
+                                <small class="text-muted">Letters, digits and @/./+/-/_ only.</small>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="id_email" class="form-label">Email</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="bi bi-envelope-fill"></i></span>
+                                    <input type="email" name="email" id="id_email" class="form-control" required>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="id_password1" class="form-label">Password</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="bi bi-key-fill"></i></span>
+                                    <input type="password" name="password1" id="id_password1" class="form-control" required>
+                                    <button class="btn btn-outline-secondary toggle-password" type="button">
+                                        <i class="bi bi-eye-fill"></i>
+                                    </button>
+                                </div>
+                                <div class="password-strength mt-2">
+                                    <div class="progress" style="height: 5px;">
+                                        <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+                                    </div>
+                                    <small class="text-muted password-strength-text">Password strength</small>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="id_password2" class="form-label">Confirm Password</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="bi bi-key-fill"></i></span>
+                                    <input type="password" name="password2" id="id_password2" class="form-control" required>
+                                    <button class="btn btn-outline-secondary toggle-password" type="button">
+                                        <i class="bi bi-eye-fill"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" class="form-check-input" id="termsCheck" required>
+                                <label class="form-check-label" for="termsCheck">I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a></label>
+                            </div>
+                            
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <i class="bi bi-person-plus-fill me-2"></i>Sign Up
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <div class="auth-card-footer">
+                        <p class="mb-0">Already have an account? <a href="{% url 'login' %}" class="text-primary">Sign in</a></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Toggle password visibility
+            document.querySelectorAll('.toggle-password').forEach(button => {
+                button.addEventListener('click', function() {
+                    const passwordInput = this.parentElement.querySelector('input');
+                    const icon = this.querySelector('i');
+                    
+                    if (passwordInput.type === 'password') {
+                        passwordInput.type = 'text';
+                        icon.classList.remove('bi-eye-fill');
+                        icon.classList.add('bi-eye-slash-fill');
+                    } else {
+                        passwordInput.type = 'password';
+                        icon.classList.remove('bi-eye-slash-fill');
+                        icon.classList.add('bi-eye-fill');
+                    }
+                });
+            });
+            
+            // Password strength indicator
+            const passwordInput = document.getElementById('id_password1');
+            const progressBar = document.querySelector('.password-strength .progress-bar');
+            const strengthText = document.querySelector('.password-strength-text');
+            
+            if (passwordInput) {
+                passwordInput.addEventListener('input', function() {
+                    const password = this.value;
+                    const strength = calculatePasswordStrength(password);
+                    
+                    // Update progress bar
+                    progressBar.style.width = strength.percentage + '%';
+                    progressBar.className = 'progress-bar bg-' + strength.color;
+                    
+                    // Update text
+                    strengthText.textContent = strength.text;
+                    strengthText.className = 'text-muted password-strength-text text-' + strength.color;
+                });
+            }
+            
+            function calculatePasswordStrength(password) {
+                let strength = 0;
+                
+                // Length (max 30 points)
+                strength += Math.min(password.length * 3, 30);
+                
+                // Contains numbers (10 points)
+                if (/\d/.test(password)) strength += 10;
+                
+                // Contains lowercase (10 points)
+                if (/[a-z]/.test(password)) strength += 10;
+                
+                // Contains uppercase (10 points)
+                if (/[A-Z]/.test(password)) strength += 10;
+                
+                // Contains special chars (20 points)
+                if (/[^a-zA-Z0-9]/.test(password)) strength += 20;
+                
+                // Calculate percentage (max 80 points)
+                const percentage = Math.min(Math.round((strength / 80) * 100), 100);
+                
+                // Determine color and text
+                let color, text;
+                if (percentage < 30) {
+                    color = 'danger';
+                    text = 'Weak';
+                } else if (percentage < 60) {
+                    color = 'warning';
+                    text = 'Moderate';
+                } else if (percentage < 80) {
+                    color = 'info';
+                    text = 'Strong';
+                } else {
+                    color = 'success';
+                    text = 'Very Strong';
+                }
+                
+                return { percentage, color, text };
+            }
+            
+            // Form validation
+            const forms = document.querySelectorAll('.needs-validation');
+            Array.from(forms).forEach(form => {
+                form.addEventListener('submit', event => {
+                    if (!form.checkValidity()) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
+                    
+                    // Check if passwords match
+                    const password1 = document.getElementById('id_password1');
+                    const password2 = document.getElementById('id_password2');
+                    
+                    if (password1 && password2 && password1.value !== password2.value) {
+                        password2.setCustomValidity("Passwords don't match");
+                    } else if (password2) {
+                        password2.setCustomValidity('');
+                    }
+                    
+                    form.classList.add('was-validated');
+                }, false);
+            });
+        });
+    </script>
+</body>
+</html>
