@@ -106,13 +106,11 @@
                     </div>
                     
                     <div class="auth-card-body">
-                        {% if form.errors %}
-                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                            <strong>Error!</strong> Please correct the errors below.
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {{ form.non_field_errors }}
                         </div>
                         {% endif %}
-                        
                         <form method="POST" action="{% url 'signup' %}" class="needs-validation" novalidate>
                             {% csrf_token %}
                             
@@ -121,16 +119,26 @@
                                     <label for="id_first_name" class="form-label">First Name</label>
                                     <div class="input-group">
                                         <span class="input-group-text"><i class="bi bi-person-fill"></i></span>
-                                        <input type="text" name="first_name" id="id_first_name" class="form-control" required>
+                                        <input type="text" name="first_name" id="id_first_name" class="form-control{% if form.first_name.errors %} is-invalid{% endif %}" required value="{{ form.first_name.value|default_if_none:'' }}">
                                     </div>
+                                    {% if form.first_name.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.first_name.errors.0 }}
+                                    </div>
+                                    {% endif %}
                                 </div>
                                 
                                 <div class="col-md-6 mb-3">
                                     <label for="id_last_name" class="form-label">Last Name</label>
                                     <div class="input-group">
                                         <span class="input-group-text"><i class="bi bi-person-fill"></i></span>
-                                        <input type="text" name="last_name" id="id_last_name" class="form-control" required>
+                                        <input type="text" name="last_name" id="id_last_name" class="form-control{% if form.last_name.errors %} is-invalid{% endif %}" required value="{{ form.last_name.value|default_if_none:'' }}">
                                     </div>
+                                    {% if form.last_name.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.last_name.errors.0 }}
+                                    </div>
+                                    {% endif %}
                                 </div>
                             </div>
                             
@@ -138,28 +146,43 @@
                                 <label for="id_username" class="form-label">Username</label>
                                 <div class="input-group">
                                     <span class="input-group-text"><i class="bi bi-person-badge-fill"></i></span>
-                                    <input type="text" name="username" id="id_username" class="form-control" required>
+                                    <input type="text" name="username" id="id_username" class="form-control{% if form.username.errors %} is-invalid{% endif %}" required value="{{ form.username.value|default_if_none:'' }}">
                                 </div>
                                 <small class="text-muted">Letters, digits and @/./+/-/_ only.</small>
+                                {% if form.username.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.username.errors.0 }}
+                                </div>
+                                {% endif %}
                             </div>
                             
                             <div class="mb-3">
                                 <label for="id_email" class="form-label">Email</label>
                                 <div class="input-group">
                                     <span class="input-group-text"><i class="bi bi-envelope-fill"></i></span>
-                                    <input type="email" name="email" id="id_email" class="form-control" required>
+                                    <input type="email" name="email" id="id_email" class="form-control{% if form.email.errors %} is-invalid{% endif %}" required value="{{ form.email.value|default_if_none:'' }}">
                                 </div>
+                                {% if form.email.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.email.errors.0 }}
+                                </div>
+                                {% endif %}
                             </div>
                             
                             <div class="mb-3">
                                 <label for="id_password1" class="form-label">Password</label>
                                 <div class="input-group">
                                     <span class="input-group-text"><i class="bi bi-key-fill"></i></span>
-                                    <input type="password" name="password1" id="id_password1" class="form-control" required>
+                                    <input type="password" name="password1" id="id_password1" class="form-control{% if form.password1.errors %} is-invalid{% endif %}" required>
                                     <button class="btn btn-outline-secondary toggle-password" type="button">
                                         <i class="bi bi-eye-fill"></i>
                                     </button>
                                 </div>
+                                {% if form.password1.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.password1.errors.0 }}
+                                </div>
+                                {% endif %}
                                 <div class="password-strength mt-2">
                                     <div class="progress" style="height: 5px;">
                                         <div class="progress-bar" role="progressbar" style="width: 0%"></div>
@@ -172,16 +195,28 @@
                                 <label for="id_password2" class="form-label">Confirm Password</label>
                                 <div class="input-group">
                                     <span class="input-group-text"><i class="bi bi-key-fill"></i></span>
-                                    <input type="password" name="password2" id="id_password2" class="form-control" required>
+                                    <input type="password" name="password2" id="id_password2" class="form-control{% if form.password2.errors %} is-invalid{% endif %}" required>
                                     <button class="btn btn-outline-secondary toggle-password" type="button">
                                         <i class="bi bi-eye-fill"></i>
                                     </button>
                                 </div>
+                                {% if form.password2.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.password2.errors.0 }}
+                                </div>
+                                {% endif %}
                             </div>
                             
                             <div class="mb-3 form-check">
-                                <input type="checkbox" class="form-check-input" id="termsCheck" required>
-                                <label class="form-check-label" for="termsCheck">I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a></label>
+                                {{ form.terms }}
+                                <label for="termsCheck" class="form-check-label">
+                                    I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>
+                                </label>
+                                {% if form.terms.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.terms.errors.0 }}
+                                    </div>
+                                {% endif %}
                             </div>
                             
                             <div class="d-grid gap-2">

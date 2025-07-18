@@ -4,7 +4,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
 from .models import Broker, Stock, Transaction, Dividend
-from .forms import BrokerForm, TransactionForm, StockForm, DividendForm
+from .forms import BrokerForm, TransactionForm, StockForm, DividendForm, CustomSignupForm
 from .utils import fetch_market_watch_data
 from django.db.models import Sum, Case, When, IntegerField, Avg, Q, F, FloatField, ExpressionWrapper
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -289,12 +289,12 @@ def stock_transaction_history(request, pk):
 
 def signup(request):
     if request.method == 'POST':
-        form = UserCreationForm(request.POST)
+        form = CustomSignupForm(request.POST)
         if form.is_valid():
             form.save()
             return redirect('login')
     else:
-        form = UserCreationForm()
+        form = CustomSignupForm()
     return render(request, 'signup.html', {'form': form})
 
 @login_required
