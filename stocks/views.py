@@ -88,6 +88,17 @@ def index(request):
 
     top_holdings = sorted(stock_data, key=lambda x: x['value'], reverse=True)[:5]
 
+    # Calculate actual portfolio metrics (moved up)
+    brokers = Broker.objects.filter(user=request.user)
+    total_free_amount = round(sum(float(broker.free_amount) for broker in brokers), 2)
+    total_value_float = float(total_value)
+    total_free_amount_float = float(total_free_amount)
+    current_portfolio_value = round(total_value_float + total_free_amount_float, 2)
+    total_invested_amount = MonthlyDeposit.objects.filter(user=request.user).aggregate(
+        total=Sum('amount')
+    )['total'] or 0
+    total_invested_amount = round(float(total_invested_amount), 2)
+
     # Get real portfolio performance data from snapshots
     snapshots = MonthlyPortfolioSnapshot.objects.filter(user=request.user).order_by('snapshot_date')
     
@@ -215,25 +226,6 @@ def index(request):
                 }
             ]
     
-    # Calculate actual portfolio metrics
-    brokers = Broker.objects.filter(user=request.user)
-    total_free_amount = round(sum(float(broker.free_amount) for broker in brokers), 2)
-    
-    # Calculate current portfolio value (stocks + free amount)
-    # Convert both to float for calculation
-    total_value_float = float(total_value)
-    total_free_amount_float = float(total_free_amount)
-    current_portfolio_value = round(total_value_float + total_free_amount_float, 2)
-    
-    # Calculate total invested amount from deposits
-    total_invested_amount = MonthlyDeposit.objects.filter(user=request.user).aggregate(
-        total=Sum('amount')
-    )['total'] or 0
-    total_invested_amount = round(float(total_invested_amount), 2)
-
-    performance_labels_json = json.dumps(performance_labels)
-    performance_datasets_json = json.dumps(performance_datasets)
-    
     # Calculate current profit/loss
     current_portfolio_gain = round(current_portfolio_value - total_invested_amount, 2)
     
@@ -268,8 +260,8 @@ def index(request):
         'total_free_amount': total_free_amount,
         'total_invested_amount': total_invested_amount,
         'stock_data_json': json.dumps(stock_data),
-        'performance_labels_json': performance_labels_json,
-        'performance_datasets_json': performance_datasets_json,
+        'performance_labels_json': json.dumps(performance_labels),
+        'performance_datasets_json': json.dumps(performance_datasets),
         'cache_status': cache_status,
     })
 
