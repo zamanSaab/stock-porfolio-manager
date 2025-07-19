@@ -41,6 +41,41 @@
                 {{ form.transaction_type|as_crispy_field }}
             </div>
         </div>
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                {{ form.commission|as_crispy_field }}
+            </div>
+            <div class="col-md-4 mb-3">
+                {{ form.sales_tax|as_crispy_field }}
+            </div>
+            <div class="col-md-4 mb-3">
+                {{ form.cdc_charges|as_crispy_field }}
+            </div>
+        </div>
+        
+        <!-- Helper section for suggested charges -->
+        <div class="row">
+            <div class="col-12">
+                <div class="alert alert-info" id="chargesHelper" style="display: none;">
+                    <h6><i class="bi bi-info-circle me-2"></i>Suggested Charges (based on current price & quantity):</h6>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <strong>Commission:</strong> <span id="suggestedCommission">Rs. 0.00</span>
+                        </div>
+                        <div class="col-md-4">
+                            <strong>Sales Tax:</strong> <span id="suggestedSalesTax">Rs. 0.00</span>
+                        </div>
+                        <div class="col-md-4">
+                            <strong>CDC Charges:</strong> <span id="suggestedCdcCharges">Rs. 0.00</span>
+                        </div>
+                    </div>
+                    <small class="text-muted mt-2 d-block">
+                        <i class="bi bi-lightbulb me-1"></i>
+                        These are suggestions based on default rates. You can override them in the fields above.
+                    </small>
+                </div>
+            </div>
+        </div>
         <div class="d-grid gap-2 d-md-flex justify-content-md-end">
             {% if form.instance.pk %}
             <a href="{% url 'delete_transaction' form.instance.pk %}" class="btn btn-danger me-2">
@@ -150,6 +185,51 @@
         document.getElementById('addStockModal').addEventListener('show.bs.modal', function() {
             document.getElementById('addStockError').classList.add('d-none');
         });
+
+        // Live calculation for commission, sales tax, cdc charges based on price and quantity
+        function updateCharges() {
+            const quantity = parseFloat(document.getElementById('id_quantity').value) || 0;
+            const price = parseFloat(document.getElementById('id_price').value) || 0;
+            const helperBox = document.getElementById('chargesHelper');
+            
+            if (quantity > 0 && price > 0) {
+                const totalAmount = quantity * price;
+                const commissionRate = 0.002;  // 0.2%
+                const salesTaxRate = 0.0015;   // 0.15%
+                const cdcRate = 0.0001;        // 0.01%
+                
+                const suggestedCommission = totalAmount * commissionRate;
+                const suggestedSalesTax = totalAmount * salesTaxRate;
+                const suggestedCdcCharges = totalAmount * cdcRate;
+                
+                // Update helper text
+                document.getElementById('suggestedCommission').textContent = `Rs. ${suggestedCommission.toFixed(2)}`;
+                document.getElementById('suggestedSalesTax').textContent = `Rs. ${suggestedSalesTax.toFixed(2)}`;
+                document.getElementById('suggestedCdcCharges').textContent = `Rs. ${suggestedCdcCharges.toFixed(2)}`;
+                
+                // Show helper box
+                helperBox.style.display = 'block';
+            } else {
+                // Hide helper box if no valid quantity/price
+                helperBox.style.display = 'none';
+            }
+        }
+
+        // Attach event listeners for live calculation
+        const quantityInput = document.getElementById('id_quantity');
+        const priceInput = document.getElementById('id_price');
+        
+        if (quantityInput) {
+            quantityInput.addEventListener('input', updateCharges);
+            quantityInput.addEventListener('change', updateCharges);
+        }
+        if (priceInput) {
+            priceInput.addEventListener('input', updateCharges);
+            priceInput.addEventListener('change', updateCharges);
+        }
+
+        // Initial calculation on page load
+        updateCharges();
     });
 </script>
 

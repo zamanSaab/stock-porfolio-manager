@@ -3,6 +3,7 @@ from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 from .models import Broker, Transaction, Stock, Dividend, MonthlyDeposit
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import get_user_model
+from decimal import Decimal
 
 
 class BrokerForm(forms.ModelForm):
@@ -17,9 +18,21 @@ class BrokerForm(forms.ModelForm):
             self.fields['name'].queryset = Broker.objects.filter(user=user)
 
 class TransactionForm(forms.ModelForm):
+    commission = forms.DecimalField(
+        label='Commission', required=False, decimal_places=2, max_digits=10, min_value=0,
+        help_text='Default commission rate = 0.2%'
+    )
+    sales_tax = forms.DecimalField(
+        label='Sales Tax', required=False, decimal_places=2, max_digits=10, min_value=0,
+        help_text='Default sales tax rate = 0.15%'
+    )
+    cdc_charges = forms.DecimalField(
+        label='CDC Charges', required=False, decimal_places=2, max_digits=10, min_value=0,
+        help_text='Default CDC charges rate = 0.01%'
+    )
     class Meta:
         model = Transaction
-        fields = ['stock', 'quantity', 'broker', 'price', 'transaction_type']
+        fields = ['stock', 'quantity', 'broker', 'price', 'transaction_type', 'commission', 'sales_tax', 'cdc_charges']
 
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)
@@ -35,10 +48,28 @@ class TransactionForm(forms.ModelForm):
         quantity = cleaned_data.get('quantity')
         broker = cleaned_data.get('broker')
         price = cleaned_data.get('price')
+        sales_tax = cleaned_data.get('sales_tax')
+        commission = cleaned_data.get('commission')
+        cdc_charges = cleaned_data.get('cdc_charges')
 
-        # if transaction_type == 'sell' and stock and quantity is not None and stock.total_quantity is not None:
-        #     if quantity > stock.total_quantity:
-        #         self.add_error('quantity', 'Sell quantity cannot exceed the available buy quantity.')
+        # Convert to Decimal for precise calculations
+        quantity = Decimal(str(quantity)) if quantity else Decimal('0')
+        price = Decimal(str(price)) if price else Decimal('0')
+        sales_tax = Decimal(str(sales_tax)) if sales_tax else Decimal('0')
+        commission = Decimal(str(commission)) if commission else Decimal('0')
+        cdc_charges = Decimal(str(cdc_charges)) if cdc_charges else Decimal('0')
+
+        total_amount = quantity * price
+        commission_rate = Decimal('0.002')  # 0.2%
+        sales_tax_rate = Decimal('0.0015')  # 0.15% 
+        cdc_rate = Decimal('0.0001')  # 0.01%
+        
+        if not sales_tax:
+            sales_tax = total_amount * sales_tax_rate
+        if not commission:
+            commission = total_amount * commission_rate
+        if not cdc_charges:
+            cdc_charges = total_amount * cdc_rate
 
         # Check if broker has sufficient quantity for sell transactions
         if transaction_type == 'sell' and stock and broker and quantity is not None:
@@ -67,6 +98,18 @@ class TransactionForm(forms.ModelForm):
             required_amount = quantity * price
             if required_amount > broker.free_amount:
                 self.add_error('quantity', f'Insufficient funds. Required: Rs. {required_amount:.2f}, Available: Rs. {broker.free_amount:.2f}')
+
+        # Calculate adjusted price with proper decimal handling
+        if quantity > 0:
+            charges_per_share = (sales_tax + commission + cdc_charges) / quantity
+            if transaction_type == 'buy':
+                new_price = price + charges_per_share
+            else:  # sell
+                new_price = price - charges_per_share
+            # Ensure exactly 2 decimal places
+            cleaned_data['price'] = new_price.quantize(Decimal('0.01'))
+        else:
+            cleaned_data['price'] = price.quantize(Decimal('0.01'))
 
         return cleaned_data
 
