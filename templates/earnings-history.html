@@ -21,47 +21,91 @@
 </div>
 
 <div class="table-container">
-    <div class="table-responsive">
-        <table class="table table-hover align-middle earnings-table">
-            <thead class="table-light">
-                <tr>
-                    <th><i class="bi bi-building me-1"></i> Stock</th>
-                    <th class="text-end"><i class="bi bi-currency-dollar me-1"></i> Avg Buy</th>
-                    <th class="text-end"><i class="bi bi-currency-dollar me-1"></i> Avg Sell</th>
-                    <th class="text-end"><i class="bi bi-cash-stack me-1"></i> P&L</th>
-                    <th class="text-end"><i class="bi bi-percent me-1"></i> P&L %</th>
-                    <th class="text-end">Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for stock in earnings %}
-                <tr>
-                    <td>
-                        <div class="d-flex align-items-center">
-                            <div class="symbol-circle bg-primary bg-opacity-10 me-3">
-                                {{ stock.symbol }}
+    <div class="mobile-table-card">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle earnings-table">
+                <thead class="table-light">
+                    <tr>
+                        <th><i class="bi bi-building me-1"></i> Stock</th>
+                        <th class="text-end"><i class="bi bi-currency-dollar me-1"></i> Avg Buy</th>
+                        <th class="text-end"><i class="bi bi-currency-dollar me-1"></i> Avg Sell</th>
+                        <th class="text-end"><i class="bi bi-cash-stack me-1"></i> P&L</th>
+                        <th class="text-end"><i class="bi bi-percent me-1"></i> P&L %</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for stock in earnings %}
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="symbol-circle bg-primary bg-opacity-10 me-3">
+                                    {{ stock.symbol }}
+                                </div>
+                                <div>
+                                    <strong>{{ stock.name }}</strong>
+                                    <div class="text-muted small">{{ stock.quantity }} shares</div>
+                                </div>
                             </div>
-                            <div>
-                                <strong>{{ stock.name }}</strong>
-                                <div class="text-muted small">{{ stock.quantity }} shares</div>
-                            </div>
-                        </div>
-                    </td>
-                    <td class="text-end">Rs. {{ stock.avg_buy_price|floatformat:2|intcomma }}</td>
-                    <td class="text-end">Rs. {{ stock.avg_sell_price|floatformat:2|intcomma }}</td>
-                    <td class="text-end {% if stock.profit_loss >= 0 %}text-success{% else %}text-danger{% endif %}">Rs. {{ stock.profit_loss|floatformat:2|intcomma }}</td>
-                    <td class="text-end {% if stock.profit_loss_percent >= 0 %}text-success{% else %}text-danger{% endif %}">
-                        {{ stock.profit_loss_percent|floatformat:2 }}%
-                    </td>
-                    <td class="text-end">
-                        <a href="{% url 'stock_transaction_history' stock.id %}" class="btn btn-sm btn-outline-primary">
-                            <i class="bi bi-clock-history me-1"></i> View History
-                        </a>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                        </td>
+                        <td class="text-end">Rs. {{ stock.avg_buy_price|floatformat:2|intcomma }}</td>
+                        <td class="text-end">Rs. {{ stock.avg_sell_price|floatformat:2|intcomma }}</td>
+                        <td class="text-end {% if stock.profit_loss >= 0 %}text-success{% else %}text-danger{% endif %}">Rs. {{ stock.profit_loss|floatformat:2|intcomma }}</td>
+                        <td class="text-end {% if stock.profit_loss_percent >= 0 %}text-success{% else %}text-danger{% endif %}">
+                            {{ stock.profit_loss_percent|floatformat:2 }}%
+                        </td>
+                        <td class="text-end">
+                            <a href="{% url 'stock_transaction_history' stock.id %}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-clock-history me-1"></i> View History
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Mobile Cards -->
+        {% for stock in earnings %}
+        <div class="mobile-card">
+            <div class="card-header">
+                <div class="d-flex align-items-center">
+                    <div class="symbol-circle bg-primary bg-opacity-10 me-3">
+                        {{ stock.symbol }}
+                    </div>
+                    <div>
+                        <strong>{{ stock.name }}</strong>
+                        <div class="text-muted small">{{ stock.quantity }} shares</div>
+                    </div>
+                </div>
+            </div>
+            <div class="card-row">
+                <span class="card-label">Avg Buy:</span>
+                <span class="card-value">Rs. {{ stock.avg_buy_price|floatformat:2|intcomma }}</span>
+            </div>
+            <div class="card-row">
+                <span class="card-label">Avg Sell:</span>
+                <span class="card-value">Rs. {{ stock.avg_sell_price|floatformat:2|intcomma }}</span>
+            </div>
+            <div class="card-row">
+                <span class="card-label">P&L:</span>
+                <span class="card-value {% if stock.profit_loss >= 0 %}text-success{% else %}text-danger{% endif %}">
+                    Rs. {{ stock.profit_loss|floatformat:2|intcomma }}
+                </span>
+            </div>
+            <div class="card-row">
+                <span class="card-label">P&L %:</span>
+                <span class="card-value {% if stock.profit_loss_percent >= 0 %}text-success{% else %}text-danger{% endif %}">
+                    {{ stock.profit_loss_percent|floatformat:2 }}%
+                </span>
+            </div>
+            <div class="card-actions">
+                <a href="{% url 'stock_transaction_history' stock.id %}" class="btn btn-outline-primary">
+                    <i class="bi bi-clock-history me-1"></i> View History
+                </a>
+            </div>
+        </div>
+        {% endfor %}
     </div>
 </div>
 

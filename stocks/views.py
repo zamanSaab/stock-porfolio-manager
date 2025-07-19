@@ -10,6 +10,7 @@ from django.db.models import Sum, Case, When, IntegerField, Avg, Q, F, FloatFiel
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 from django.urls import reverse_lazy
+import json
 
 @login_required
 def index(request):
@@ -32,6 +33,7 @@ def index(request):
     ).filter(quantity__gt=0).order_by('-name')
     total_value = 0
     stock_data = []
+    sector_data_json = []
     current_price = 200
 
     for stock in stocks:
@@ -39,15 +41,43 @@ def index(request):
         value = avg_price * stock.total_quantity
         total_value += value
         stock_data.append({
-            **stock.__dict__,
-            'value': round(value, 2),
-            'change': current_price - avg_price
+            'name': stock.name,
+            'symbol': stock.symbol,
+            'value': int(value),
+            'quantity': stock.quantity,  # Add quantity for template
+            "exploded": True,
+            # 'change': current_price - avg_price
         })
-
     for data in stock_data:
-        data['percentage'] = (data['value'] / total_value * 100) if total_value > 0 else 0
+        data['y'] = int((data['value']  / total_value)*100) if total_value > 0 else 0
 
     top_holdings = sorted(stock_data, key=lambda x: x['value'], reverse=True)[:5]
+
+    # Example dynamic portfolio performance data (replace with real calculations as needed)
+    performance_labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    performance_datasets = [
+        {
+            "label": "My Portfolio",
+            "data": [100, 105, 112, 108, 118, 125],
+            "borderColor": "#4e73df",
+            "backgroundColor": "rgba(78, 115, 223, 0.1)",
+            "borderWidth": 2,
+            "tension": 0.4,
+            "fill": True
+        },
+        {
+            "label": "NIFTY 50",
+            "data": [100, 102, 104, 101, 107, 110],
+            "borderColor": "#858796",
+            "backgroundColor": "rgba(133, 135, 150, 0.1)",
+            "borderWidth": 2,
+            "borderDash": [5, 5],
+            "tension": 0.4,
+            "fill": True
+        }
+    ]
+    performance_labels_json = json.dumps(performance_labels)
+    performance_datasets_json = json.dumps(performance_datasets)
 
     return render(request, 'index.html', {
         'top_holdings': top_holdings,
@@ -57,6 +87,9 @@ def index(request):
         'current_portfolio': 947000,
         'dividend': 42300,
         'total_free_amount': sum(broker.free_amount for broker in Broker.objects.filter(user=request.user)),
+        'stock_data_json': json.dumps(stock_data),
+        'performance_labels_json': performance_labels_json,
+        'performance_datasets_json': performance_datasets_json,
     })
 
 @login_required
@@ -187,6 +220,13 @@ def edit_transaction(request, pk):
 def delete_transaction(request, pk):
     transaction = get_object_or_404(Transaction, pk=pk, user=request.user)
     if request.method == 'POST':
+        # Adjust broker free amount before deleting the transaction
+        if transaction.transaction_type == 'buy':
+            transaction.broker.free_amount += transaction.quantity * transaction.price
+        elif transaction.transaction_type == 'sell':
+            transaction.broker.free_amount -= transaction.quantity * transaction.price
+        transaction.broker.save()
+        
         transaction.delete()
         messages.success(request, 'Transaction deleted successfully!')
         return redirect('transaction_list')
@@ -244,26 +284,30 @@ def add_stock(request):
 @login_required
 def earnings_history(request):
     stocks = Stock.objects.filter(user=request.user, is_active=False).annotate(
-        avg_buy_price=Avg('transactions__price', filter=Q(transactions__transaction_type='buy')),
-        avg_sell_price=Avg('transactions__price', filter=Q(transactions__transaction_type='sell')),
         buy_quantity=Sum('transactions__quantity', filter=Q(transactions__transaction_type='buy')),
         sell_quantity=Sum('transactions__quantity', filter=Q(transactions__transaction_type='sell')),
-    ).exclude(avg_sell_price__isnull=True)
+        buy_amount=Sum(F('transactions__quantity') * F('transactions__price'), filter=Q(transactions__transaction_type='buy')),
+        sell_amount=Sum(F('transactions__quantity') * F('transactions__price'), filter=Q(transactions__transaction_type='sell')),
+    ).exclude(sell_amount__isnull=True)
     
     # Calculate profit/loss for each stock
     earnings = []
     for stock in stocks:
         quantity_sold = stock.sell_quantity or 0
-        profit_loss = (stock.avg_sell_price - stock.avg_buy_price) * quantity_sold
-        profit_loss_percent = (stock.avg_sell_price - stock.avg_buy_price) / stock.avg_buy_price * 100
+        # Calculate weighted average prices
+        avg_buy_price = stock.buy_amount / stock.buy_quantity if stock.buy_quantity and stock.buy_quantity > 0 else 0
+        avg_sell_price = stock.sell_amount / stock.sell_quantity if stock.sell_quantity and stock.sell_quantity > 0 else 0
+        
+        profit_loss = (avg_sell_price - avg_buy_price) * quantity_sold
+        profit_loss_percent = (avg_sell_price - avg_buy_price) / avg_buy_price * 100 if avg_buy_price > 0 else 0
         
         earnings.append({
             'name': stock.name,
             'symbol': stock.symbol,
             'id': stock.id,
             'quantity': quantity_sold,
-            'avg_buy_price': stock.avg_buy_price,
-            'avg_sell_price': stock.avg_sell_price,
+            'avg_buy_price': avg_buy_price,
+            'avg_sell_price': avg_sell_price,
             'profit_loss': profit_loss,
             'profit_loss_percent': profit_loss_percent,
         })

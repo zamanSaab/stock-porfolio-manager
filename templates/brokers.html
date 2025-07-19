@@ -15,51 +15,81 @@
 </div>
 
 <div class="table-container">
-    <div class="table-responsive">
-        <table class="table table-hover align-middle">
-            <thead class="table-light">
-                <tr>
-                    <th><i class="bi bi-building me-1"></i> Name</th>
-                    <th><i class="bi bi-code me-1"></i> Code</th>
-                    <!-- <th class="text-end"><i class="bi bi-cash-stack me-1"></i> Total Amount</th> -->
-                    <th class="text-end"><i class="bi bi-wallet2 me-1"></i> Free Amount</th>
-                    <th class="text-end">Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for broker in brokers %}
-                <tr>
-                    <td>
-                        <div class="d-flex align-items-center">
-                            <div class="bg-primary bg-opacity-10 rounded-circle p-2 me-3">
-                                <i class="bi bi-bank text-primary"></i>
+    <div class="mobile-table-card">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th><i class="bi bi-building me-1"></i> Name</th>
+                        <th><i class="bi bi-code me-1"></i> Code</th>
+                        <th class="text-end"><i class="bi bi-wallet2 me-1"></i> Free Amount</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for broker in brokers %}
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="bg-primary bg-opacity-10 rounded-circle p-2 me-3">
+                                    <i class="bi bi-bank text-primary"></i>
+                                </div>
+                                <strong>{{ broker.name }}</strong>
                             </div>
-                            <strong>{{ broker.name }}</strong>
-                        </div>
-                    </td>
-                    <td><code>{{ broker.code }}</code></td>
-                    <!-- <td class="text-end amount-positive">Rs. {{ broker.total_amount|floatformat:2|intcomma }}</td> -->
-                    <td class="text-end amount-positive">Rs. {{ broker.free_amount|floatformat:2|intcomma }}</td>
-                    <td class="text-end d-flex justify-content-end align-items-center">
-                        <a href="{% url 'edit_broker' broker.id %}" class="btn btn-sm btn-outline-primary me-1">
-                            <i class="bi bi-pencil"></i> Edit
-                        </a>
-                        <a href="{% url 'delete_broker' broker.id %}" class="btn btn-sm btn-outline-danger">
-                            <i class="bi bi-trash"></i> Delete
-                        </a>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-            <tfoot>
-                <tr class="table-active">
-                    <td colspan="2"><strong>Total</strong></td>
-                    <!-- <td class="text-end amount-positive"><strong>Rs. {{ total_amount|floatformat:2|intcomma }}</strong></td> -->
-                    <td class="text-end amount-positive"><strong>Rs. {{ free_amount|floatformat:2|intcomma }}</strong></td>
-                    <td></td>
-                </tr>
-            </tfoot>
-        </table>
+                        </td>
+                        <td><code>{{ broker.code }}</code></td>
+                        <td class="text-end amount-positive">Rs. {{ broker.free_amount|floatformat:2|intcomma }}</td>
+                        <td class="text-end d-flex justify-content-end align-items-center">
+                            <a href="{% url 'edit_broker' broker.id %}" class="btn btn-sm btn-outline-primary me-1">
+                                <i class="bi bi-pencil"></i> Edit
+                            </a>
+                            <a href="{% url 'delete_broker' broker.id %}" class="btn btn-sm btn-outline-danger">
+                                <i class="bi bi-trash"></i> Delete
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Mobile Cards -->
+        {% for broker in brokers %}
+        <div class="mobile-card">
+            <div class="card-header">
+                <div class="d-flex align-items-center">
+                    <div class="bg-primary bg-opacity-10 rounded-circle p-2 me-3">
+                        <i class="bi bi-bank text-primary"></i>
+                    </div>
+                    <strong>{{ broker.name }}</strong>
+                </div>
+            </div>
+            <div class="card-row">
+                <span class="card-label">Code:</span>
+                <span class="card-value"><code>{{ broker.code }}</code></span>
+            </div>
+            <div class="card-row">
+                <span class="card-label">Free Amount:</span>
+                <span class="card-value amount-positive">Rs. {{ broker.free_amount|floatformat:2|intcomma }}</span>
+            </div>
+            <div class="card-actions">
+                <a href="{% url 'edit_broker' broker.id %}" class="btn btn-outline-primary">
+                    <i class="bi bi-pencil"></i> Edit
+                </a>
+                <a href="{% url 'delete_broker' broker.id %}" class="btn btn-outline-danger">
+                    <i class="bi bi-trash"></i> Delete
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <!-- Total Row -->
+    <div class="mt-4 p-3 bg-light rounded">
+        <div class="d-flex justify-content-between align-items-center">
+            <strong>Total Free Amount:</strong>
+            <strong class="amount-positive">Rs. {{ free_amount|floatformat:2|intcomma }}</strong>
+        </div>
     </div>
 </div>
 {% endblock %}

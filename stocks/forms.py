@@ -33,10 +33,40 @@ class TransactionForm(forms.ModelForm):
         stock = cleaned_data.get('stock')
         transaction_type = cleaned_data.get('transaction_type')
         quantity = cleaned_data.get('quantity')
+        broker = cleaned_data.get('broker')
+        price = cleaned_data.get('price')
 
-        if transaction_type == 'sell' and stock and quantity is not None and stock.total_quantity is not None:
-            if quantity > stock.total_quantity:
-                self.add_error('quantity', 'Sell quantity cannot exceed the available buy quantity.')
+        # if transaction_type == 'sell' and stock and quantity is not None and stock.total_quantity is not None:
+        #     if quantity > stock.total_quantity:
+        #         self.add_error('quantity', 'Sell quantity cannot exceed the available buy quantity.')
+
+        # Check if broker has sufficient quantity for sell transactions
+        if transaction_type == 'sell' and stock and broker and quantity is not None:
+            # Calculate total buy quantity from this broker for this stock
+            broker_buy_quantity = sum(
+                t.quantity for t in stock.transactions.filter(
+                    broker=broker, 
+                    transaction_type='buy'
+                )
+            )
+            # Calculate total sell quantity from this broker for this stock
+            broker_sell_quantity = sum(
+                t.quantity for t in stock.transactions.filter(
+                    broker=broker, 
+                    transaction_type='sell'
+                )
+            )
+            # Available quantity from this broker
+            broker_available_quantity = broker_buy_quantity - broker_sell_quantity
+            
+            if quantity > broker_available_quantity:
+                self.add_error('quantity', f'Insufficient quantity from this broker. Available: {broker_available_quantity}, Requested: {quantity}')
+
+        # Check if broker has sufficient free cash for buy transactions
+        if transaction_type == 'buy' and broker and quantity is not None and price is not None:
+            required_amount = quantity * price
+            if required_amount > broker.free_amount:
+                self.add_error('quantity', f'Insufficient funds. Required: Rs. {required_amount:.2f}, Available: Rs. {broker.free_amount:.2f}')
 
         return cleaned_data
 

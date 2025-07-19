@@ -12,41 +12,73 @@
 </div>
 
 <div class="table-container">
-    <div class="table-responsive">
-        <table class="table table-hover align-middle">
-            <thead class="table-light">
-                <tr>
-                    <th><i class="bi bi-currency-dollar me-1"></i> Stock</th>
-                    <th><i class="bi bi-bank me-1"></i> Broker</th>
-                    <th class="text-end"><i class="bi bi-123 me-1"></i> Quantity</th>
-                    <th class="text-end"><i class="bi bi-cash-stack me-1"></i> Price</th>
-                    <th>Type</th>
-                    <th class="text-end">Date</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for transaction in transactions %}
-                <tr>
-                    <td>
-                        <div class="d-flex align-items-center">
-                            <strong>{{ transaction.stock.name }}</strong>
-                        </div>
-                    </td>
-                    <td>{{ transaction.broker.name }}</td>
-                    <td class="text-end">{{ transaction.quantity }}</td>
-                    <td class="text-end amount-positive">Rs. {{ transaction.price|floatformat:2|intcomma }}</td>
-                    <td>
-                        {% if transaction.transaction_type == 'buy' %}
-                            <span class="badge bg-success">{{ transaction.transaction_type }}</span>
-                        {% else %}
-                            <span class="badge bg-danger">{{ transaction.transaction_type }}</span>
-                        {% endif %}
-                    </td>
-                    <td class="text-end text-muted small">{{ transaction.date|date:"Y-m-d" }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    <div class="mobile-table-card">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th><i class="bi bi-currency-dollar me-1"></i> Stock</th>
+                        <th><i class="bi bi-bank me-1"></i> Broker</th>
+                        <th class="text-end"><i class="bi bi-123 me-1"></i> Quantity</th>
+                        <th class="text-end"><i class="bi bi-cash-stack me-1"></i> Price</th>
+                        <th>Type</th>
+                        <th class="text-end mobile-hide">Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for transaction in transactions %}
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <strong>{{ transaction.stock.name }}</strong>
+                            </div>
+                        </td>
+                        <td>{{ transaction.broker.name }}</td>
+                        <td class="text-end">{{ transaction.quantity }}</td>
+                        <td class="text-end amount-positive">Rs. {{ transaction.price|floatformat:2|intcomma }}</td>
+                        <td>
+                            {% if transaction.transaction_type == 'buy' %}
+                                <span class="badge bg-success">{{ transaction.transaction_type }}</span>
+                            {% else %}
+                                <span class="badge bg-danger">{{ transaction.transaction_type }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end text-muted small mobile-hide">{{ transaction.date|date:"Y-m-d" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Mobile Cards -->
+        {% for transaction in transactions %}
+        <div class="mobile-card">
+            <div class="card-header">
+                <div class="d-flex align-items-center">
+                    <strong>{{ transaction.stock.name }}</strong>
+                    <span class="badge ms-auto {% if transaction.transaction_type == 'buy' %}bg-success{% else %}bg-danger{% endif %}">
+                        {{ transaction.transaction_type }}
+                    </span>
+                </div>
+            </div>
+            <div class="card-row">
+                <span class="card-label">Broker:</span>
+                <span class="card-value">{{ transaction.broker.name }}</span>
+            </div>
+            <div class="card-row">
+                <span class="card-label">Quantity:</span>
+                <span class="card-value">{{ transaction.quantity }}</span>
+            </div>
+            <div class="card-row">
+                <span class="card-label">Price:</span>
+                <span class="card-value amount-positive">Rs. {{ transaction.price|floatformat:2|intcomma }}</span>
+            </div>
+            <div class="card-row">
+                <span class="card-label">Date:</span>
+                <span class="card-value text-muted">{{ transaction.date|date:"Y-m-d" }}</span>
+            </div>
+        </div>
+        {% endfor %}
     </div>
 </div>
 

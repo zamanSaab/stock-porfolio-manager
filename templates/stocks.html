@@ -14,46 +14,90 @@
 
 <div class="table-container">
     {% if stocks %}
-    <div class="table-responsive">
-        <table class="table table-hover align-middle">
-            <thead class="table-light">
-                <tr>
-                    <th><i class="bi bi-building me-1"></i> Name</th>
-                    <th class="text-end"><i class="bi bi-currency-dollar me-1"></i> Avg Price</th>
-                    <th class="text-end"><i class="bi bi-123 me-1"></i> Quantity</th>
-                    <th class="text-end"><i class="bi bi-currency-dollar me-1"></i> Amount</th>
-                    <th class="text-end"><i class="bi bi-graph-down me-1"></i> Stop Loss</th>
-                    <th class="text-end"><i class="bi bi-bullseye me-1"></i> Target 1</th>
-                    <th class="text-end"><i class="bi bi-bullseye me-1"></i> Target 2</th>
-                    <th class="text-end">Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for stock in stocks %}
-                <tr>
-                    <td>
-                        <div class="d-flex align-items-center">
-                            <div class="bg-success bg-opacity-10 rounded-circle p-2 me-3">
-                                <strong class="">{{ stock.symbol|default:"-" }}</strong>
+    <div class="mobile-table-card">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th><i class="bi bi-building me-1"></i> Name</th>
+                        <th class="text-end"><i class="bi bi-currency-dollar me-1"></i> Avg Price</th>
+                        <th class="text-end"><i class="bi bi-123 me-1"></i> Quantity</th>
+                        <th class="text-end"><i class="bi bi-currency-dollar me-1"></i> Amount</th>
+                        <th class="text-end mobile-hide"><i class="bi bi-graph-down me-1"></i> Stop Loss</th>
+                        <th class="text-end mobile-hide"><i class="bi bi-bullseye me-1"></i> Target 1</th>
+                        <th class="text-end mobile-hide"><i class="bi bi-bullseye me-1"></i> Target 2</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for stock in stocks %}
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="bg-success bg-opacity-10 rounded-circle p-2 me-3">
+                                    <strong class="">{{ stock.symbol|default:"-" }}</strong>
+                                </div>
                             </div>
-                            <!-- <strong>{{ stock.name|default:"-" }}</strong> -->
-                        </div>
-                    </td>
-                    <td class="text-end amount-negative">{{ stock.avg_price|floatformat:2|intcomma|default:"-" }}</td>
-                    <td class="text-end amount-negative">{{ stock.total_quantity|default:"-" }}</td>
-                    <td class="text-end amount-negative">{{ stock.total_price|floatformat:2|intcomma|default:"-" }}</td>
-                    <td class="text-end fw-bold text-danger">{{ stock.stop_loss|floatformat:2|intcomma|default:"-" }}</td>
-                    <td class="text-end fw-bold text-success">{{ stock.target1|floatformat:2|intcomma|default:"-" }}</td>
-                    <td class="text-end fw-bold text-success">{{ stock.target2|floatformat:2|intcomma|default:"-" }}</td>
-                    <td class="text-end align-top">
-                        <a href="{% url 'stock_details' stock.id %}" class="btn btn-sm btn-outline-primary me-1">
-                            <i class="bi bi-eye"></i> Details
-                        </a>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                        </td>
+                        <td class="text-end amount-negative">{{ stock.avg_price|floatformat:2|intcomma|default:"-" }}</td>
+                        <td class="text-end amount-negative">{{ stock.total_quantity|default:"-" }}</td>
+                        <td class="text-end amount-negative">{{ stock.total_price|floatformat:2|intcomma|default:"-" }}</td>
+                        <td class="text-end fw-bold text-danger mobile-hide">{{ stock.stop_loss|floatformat:2|intcomma|default:"-" }}</td>
+                        <td class="text-end fw-bold text-success mobile-hide">{{ stock.target1|floatformat:2|intcomma|default:"-" }}</td>
+                        <td class="text-end fw-bold text-success mobile-hide">{{ stock.target2|floatformat:2|intcomma|default:"-" }}</td>
+                        <td class="text-end align-top">
+                            <a href="{% url 'stock_details' stock.id %}" class="btn btn-sm btn-outline-primary me-1">
+                                <i class="bi bi-eye"></i> Details
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Mobile Cards -->
+        {% for stock in stocks %}
+        <div class="mobile-card">
+            <div class="card-header">
+                <div class="d-flex align-items-center">
+                    <div class="bg-success bg-opacity-10 rounded-circle p-2 me-3">
+                        <strong>{{ stock.symbol|default:"-" }}</strong>
+                    </div>
+                    <strong>{{ stock.name|default:"-" }}</strong>
+                </div>
+            </div>
+            <div class="card-row">
+                <span class="card-label">Avg Price:</span>
+                <span class="card-value amount-negative">Rs. {{ stock.avg_price|floatformat:2|intcomma|default:"-" }}</span>
+            </div>
+            <div class="card-row">
+                <span class="card-label">Quantity:</span>
+                <span class="card-value">{{ stock.total_quantity|default:"-" }}</span>
+            </div>
+            <div class="card-row">
+                <span class="card-label">Amount:</span>
+                <span class="card-value amount-negative">Rs. {{ stock.total_price|floatformat:2|intcomma|default:"-" }}</span>
+            </div>
+            <div class="card-row">
+                <span class="card-label">Stop Loss:</span>
+                <span class="card-value text-danger">Rs. {{ stock.stop_loss|floatformat:2|intcomma|default:"-" }}</span>
+            </div>
+            <div class="card-row">
+                <span class="card-label">Target 1:</span>
+                <span class="card-value text-success">Rs. {{ stock.target1|floatformat:2|intcomma|default:"-" }}</span>
+            </div>
+            <div class="card-row">
+                <span class="card-label">Target 2:</span>
+                <span class="card-value text-success">Rs. {{ stock.target2|floatformat:2|intcomma|default:"-" }}</span>
+            </div>
+            <div class="card-actions">
+                <a href="{% url 'stock_details' stock.id %}" class="btn btn-outline-primary">
+                    <i class="bi bi-eye"></i> Details
+                </a>
+            </div>
+        </div>
+        {% endfor %}
     </div>
     {% else %}
     <div class="alert alert-info d-flex align-items-center" role="alert">
