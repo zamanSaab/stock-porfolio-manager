@@ -32,4 +32,21 @@ urlpatterns = [
     path('dividends/add/', views.add_dividend, name='add_dividend'),
     path('dividends/<int:pk>/edit/', views.edit_dividend, name='edit_dividend'),
     path('dividends/<int:pk>/delete/', views.delete_dividend, name='delete_dividend'),
+    
+    # Monthly Deposits
+    path('monthly-deposits/', views.monthly_deposit_list, name='monthly_deposit_list'),
+    path('monthly-deposits/add/', views.add_monthly_deposit, name='add_monthly_deposit'),
+    path('monthly-deposits/<int:pk>/edit/', views.edit_monthly_deposit, name='edit_monthly_deposit'),
+    path('monthly-deposits/<int:pk>/delete/', views.delete_monthly_deposit, name='delete_monthly_deposit'),
+    path('monthly-deposits/chart-data/', views.monthly_deposit_chart_data, name='monthly_deposit_chart_data'),
+    
+    # Portfolio Snapshots
+    path('portfolio-snapshots/', views.portfolio_snapshots, name='portfolio_snapshots'),
+    path('portfolio-snapshots/generate/', views.generate_snapshot, name='generate_snapshot'),
+    path('portfolio-snapshots/<int:pk>/', views.snapshot_detail, name='snapshot_detail'),
+    path('portfolio-snapshots/<int:pk>/delete/', views.delete_snapshot, name='delete_snapshot'),
+    path('portfolio-snapshots/chart-data/', views.portfolio_growth_chart_data, name='portfolio_growth_chart_data'),
+    
+    # Market Cache Management
+    path('market-cache/refresh/', views.refresh_market_cache, name='refresh_market_cache'),
 ]

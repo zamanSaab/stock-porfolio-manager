@@ -400,6 +400,16 @@
                         <i class="bi bi-currency-exchange me-2"></i>Dividends
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'monthly_deposit_list' %}">
+                        <i class="bi bi-piggy-bank me-2"></i>Monthly Deposits
+                    </a>
+                </li>
+                {% comment %} <li class="nav-item">
+                    <a class="nav-link" href="{% url 'portfolio_snapshots' %}">
+                        <i class="bi bi-graph-up-arrow me-2"></i>Portfolio Snapshots
+                    </a>
+                </li> {% endcomment %}
                 {% if user.is_authenticated %}
                 <li class="nav-item">
                     <form method="POST" action="{% url 'logout' %}">
@@ -420,6 +430,26 @@
         </nav>
         <div class="main-content flex-grow-1 p-4" id="mainContent">
             <div class="container-fluid">
+                {% comment %} <!-- Snapshot Status Notification -->
+                {% if request.snapshot_status %}
+                    {% if request.snapshot_status.should_generate %}
+                        <div class="alert alert-info alert-dismissible fade show" role="alert" id="snapshot-ready-alert">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>Monthly Snapshot Ready!</strong> 
+                            It's the last day of the month and after 4 PM. Your portfolio snapshot will be generated automatically.
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% elif request.snapshot_status.this_month_snapshot %}
+                        <div class="alert alert-success alert-dismissible fade show" role="alert" id="snapshot-generated-alert">
+                            <i class="fas fa-check-circle"></i>
+                            <strong>Monthly Snapshot Generated!</strong> 
+                            Your portfolio snapshot for {{ request.snapshot_status.this_month_snapshot.snapshot_date|date:"F Y" }} has been created.
+                            <a href="{% url 'portfolio_snapshots' %}" class="alert-link">View Snapshots</a>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endif %}
+                {% endif %}
+                 {% endcomment %}
                 {% block content %}
                 {% endblock %}
             </div>
@@ -499,6 +529,42 @@
                     hideSidebar();
                 }
             });
+            
+            // Snapshot notification auto-dismiss
+            function setupSnapshotNotifications() {
+                // Get notification settings from Django context
+                const notificationSettings = {
+                    snapshot_ready_timeout: {{ NOTIFICATION_SETTINGS.snapshot_ready_timeout }},
+                    snapshot_generated_timeout: {{ NOTIFICATION_SETTINGS.snapshot_generated_timeout }},
+                    show_notifications: {{ NOTIFICATION_SETTINGS.show_notifications|yesno:"true,false" }}
+                };
+                
+                // Only setup notifications if they're enabled
+                if (!notificationSettings.show_notifications) {
+                    return;
+                }
+                
+                // Snapshot Ready Alert - Auto dismiss after configured time
+                const readyAlert = document.getElementById('snapshot-ready-alert');
+                if (readyAlert) {
+                    setTimeout(() => {
+                        const bsAlert = new bootstrap.Alert(readyAlert);
+                        bsAlert.close();
+                    }, notificationSettings.snapshot_ready_timeout);
+                }
+                
+                // Snapshot Generated Alert - Auto dismiss after configured time
+                const generatedAlert = document.getElementById('snapshot-generated-alert');
+                if (generatedAlert) {
+                    setTimeout(() => {
+                        const bsAlert = new bootstrap.Alert(generatedAlert);
+                        bsAlert.close();
+                    }, notificationSettings.snapshot_generated_timeout);
+                }
+            }
+            
+            // Initialize notification timing
+            setupSnapshotNotifications();
         });
     </script>
 </body>

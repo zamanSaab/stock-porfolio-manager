@@ -1,0 +1,276 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Generate Portfolio Snapshot{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Generate Portfolio Snapshot</h1>
+        <a href="{% url 'portfolio_snapshots' %}" class="d-none d-sm-inline-block btn btn-sm btn-secondary shadow-sm">
+            <i class="fas fa-arrow-left fa-sm text-white-50"></i> Back to Snapshots
+        </a>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-xl-8 col-lg-10">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Snapshot Details</h6>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="snapshot_date" class="form-label">
+                                    <i class="fas fa-calendar"></i> Snapshot Date *
+                                </label>
+                                <input type="date" 
+                                       class="form-control" 
+                                       id="snapshot_date" 
+                                       name="snapshot_date" 
+                                       value="{{ today_date|date:'Y-m-d' }}"
+                                       required>
+                                <small class="form-text text-muted">Select the date for this portfolio snapshot</small>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">
+                                    <i class="fas fa-info-circle"></i> Current Portfolio Status
+                                </label>
+                                <div class="card border-left-info">
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-6">
+                                                <strong>Total Deposits:</strong><br>
+                                                <span id="current-deposits" class="text-info">Calculating...</span>
+                                            </div>
+                                            <div class="col-6">
+                                                <strong>Portfolio Value:</strong><br>
+                                                <span id="current-portfolio" class="text-primary">Calculating...</span>
+                                            </div>
+                                        </div>
+                                        <div class="row mt-2">
+                                            <div class="col-6">
+                                                <strong>Free Amount:</strong><br>
+                                                <span id="current-free" class="text-secondary">Calculating...</span>
+                                            </div>
+                                            <div class="col-6">
+                                                <strong>P&L:</strong><br>
+                                                <span id="current-pnl" class="text-success">Calculating...</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Preview Section -->
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <div class="card border-left-success">
+                                    <div class="card-body">
+                                        <h6 class="card-title text-success">
+                                            <i class="fas fa-eye"></i> Snapshot Preview
+                                        </h6>
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <strong>Date:</strong><br>
+                                                <span id="preview-date">-</span>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <strong>Invested Amount:</strong><br>
+                                                <span id="preview-invested" class="text-info font-weight-bold">-</span>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <strong>Portfolio Value:</strong><br>
+                                                <span id="preview-portfolio" class="text-primary font-weight-bold">-</span>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <strong>Profit/Loss:</strong><br>
+                                                <span id="preview-pnl" class="font-weight-bold">-</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Information Alert -->
+                        <div class="alert alert-info mt-4">
+                            <h6 class="alert-heading">
+                                <i class="fas fa-info-circle"></i> What will be captured?
+                            </h6>
+                            <ul class="mb-0">
+                                <li><strong>Total Invested Amount:</strong> Sum of all deposits up to the selected date</li>
+                                <li><strong>Portfolio Value:</strong> Current value of all stocks + free amounts</li>
+                                <li><strong>Free Amount:</strong> Available cash across all brokers</li>
+                                <li><strong>Profit/Loss:</strong> Portfolio value minus total invested amount</li>
+                                <li><strong>P&L Percentage:</strong> Percentage gain or loss on investment</li>
+                            </ul>
+                        </div>
+
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <div class="d-flex justify-content-between">
+                                    <a href="{% url 'portfolio_snapshots' %}" class="btn btn-secondary">
+                                        <i class="fas fa-times"></i> Cancel
+                                    </a>
+                                    <button type="submit" class="btn btn-success">
+                                        <i class="fas fa-save"></i> Generate Snapshot
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const dateField = document.getElementById('snapshot_date');
+    
+    // Update preview when date changes
+    dateField.addEventListener('change', updatePreview);
+    
+    // Initialize preview
+    updatePreview();
+    
+    function updatePreview() {
+        const selectedDate = dateField.value;
+        
+        if (selectedDate) {
+            // Update preview date
+            const date = new Date(selectedDate);
+            document.getElementById('preview-date').textContent = date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+            
+            // Fetch current portfolio data
+            fetchCurrentPortfolioData(selectedDate);
+        }
+    }
+    
+    function fetchCurrentPortfolioData(date) {
+        // For now, we'll use placeholder data
+        // In a real implementation, you'd make an AJAX call to get current data
+        
+        // Simulate loading
+        document.getElementById('current-deposits').textContent = 'Loading...';
+        document.getElementById('current-portfolio').textContent = 'Loading...';
+        document.getElementById('current-free').textContent = 'Loading...';
+        document.getElementById('current-pnl').textContent = 'Loading...';
+        
+        // Update preview with current data (placeholder)
+        setTimeout(() => {
+            // This would be replaced with actual AJAX call
+            const mockData = {
+                total_deposits: 500000,
+                portfolio_value: 650000,
+                free_amount: 50000,
+                profit_loss: 100000
+            };
+            
+            document.getElementById('current-deposits').textContent = 'Rs. ' + mockData.total_deposits.toLocaleString();
+            document.getElementById('current-portfolio').textContent = 'Rs. ' + mockData.portfolio_value.toLocaleString();
+            document.getElementById('current-free').textContent = 'Rs. ' + mockData.free_amount.toLocaleString();
+            
+            const pnlElement = document.getElementById('current-pnl');
+            if (mockData.profit_loss >= 0) {
+                pnlElement.textContent = '+Rs. ' + mockData.profit_loss.toLocaleString();
+                pnlElement.className = 'text-success';
+            } else {
+                pnlElement.textContent = 'Rs. ' + mockData.profit_loss.toLocaleString();
+                pnlElement.className = 'text-danger';
+            }
+            
+            // Update preview
+            document.getElementById('preview-invested').textContent = 'Rs. ' + mockData.total_deposits.toLocaleString();
+            document.getElementById('preview-portfolio').textContent = 'Rs. ' + mockData.portfolio_value.toLocaleString();
+            
+            const previewPnl = document.getElementById('preview-pnl');
+            if (mockData.profit_loss >= 0) {
+                previewPnl.textContent = '+Rs. ' + mockData.profit_loss.toLocaleString();
+                previewPnl.className = 'text-success font-weight-bold';
+            } else {
+                previewPnl.textContent = 'Rs. ' + mockData.profit_loss.toLocaleString();
+                previewPnl.className = 'text-danger font-weight-bold';
+            }
+        }, 500);
+    }
+    
+    // Form validation
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function(e) {
+        if (!dateField.value) {
+            e.preventDefault();
+            alert('Please select a snapshot date.');
+            dateField.focus();
+        }
+    });
+});
+</script>
+
+<style>
+/* Form Styling */
+.form-control:focus {
+    border-color: #4e73df;
+    box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.25);
+}
+
+.form-label {
+    font-weight: 600;
+    color: #5a5c69;
+}
+
+/* Preview Card Styling */
+.card.border-left-success {
+    border-left: 0.25rem solid #1cc88a !important;
+}
+
+.card.border-left-info {
+    border-left: 0.25rem solid #36b9cc !important;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .card-body {
+        padding: 1rem;
+    }
+    
+    .btn {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+    
+    .d-flex.justify-content-between {
+        flex-direction: column;
+    }
+}
+
+/* Animation */
+.card {
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Alert Styling */
+.alert-info {
+    background-color: #d1ecf1;
+    border-color: #bee5eb;
+    color: #0c5460;
+}
+</style>
+{% endblock %} 

@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
-from .models import Broker, Transaction, Stock, Dividend
+from .models import Broker, Transaction, Stock, Dividend, MonthlyDeposit
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import get_user_model
 
@@ -121,3 +121,52 @@ class DividendForm(forms.ModelForm):
         
         self.fields['impact_average'].label = 'Include in Stocks average price calculations'
         self.fields['impact_average'].widget.attrs.update({'style': 'margin-top: 2px;'})
+
+class MonthlyDepositForm(forms.ModelForm):
+    class Meta:
+        model = MonthlyDeposit
+        fields = ['broker', 'amount', 'deposit_date', 'description']
+        widgets = {
+            'deposit_date': forms.DateInput(attrs={
+                'class': 'form-control',
+                'type': 'date'
+            }),
+            'description': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Optional description (e.g., Salary, Bonus, etc.)'
+            }),
+        }
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        
+        if user:
+            self.fields['broker'].queryset = Broker.objects.filter(user=user)
+        
+        for field in self.fields:
+            if field != 'description':
+                self.fields[field].widget.attrs.update({
+                    'class': 'form-control',
+                })
+
+    def clean(self):
+        cleaned_data = super().clean()
+        broker = cleaned_data.get('broker')
+        deposit_date = cleaned_data.get('deposit_date')
+        amount = cleaned_data.get('amount')
+
+        if amount and amount <= 0:
+            self.add_error('amount', 'Deposit amount must be greater than zero.')
+
+        # Check if deposit already exists for this broker on this date
+        if broker and deposit_date:
+            existing_deposit = MonthlyDeposit.objects.filter(
+                broker=broker,
+                deposit_date=deposit_date
+            ).exclude(pk=self.instance.pk if self.instance.pk else None)
+            
+            if existing_deposit.exists():
+                self.add_error('deposit_date', f'A deposit already exists for {broker.name} on {deposit_date}.')
+
+        return cleaned_data

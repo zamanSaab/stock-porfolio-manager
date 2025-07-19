@@ -2,6 +2,7 @@
 {% load humanize %}
 
 {% block content %}
+{% csrf_token %}
 <div class="container-fluid px-0">
     <!-- Hero Section -->
     <div class="bg-gradient-dark text-white py-5" style="border-radius: 5px; background: linear-gradient(135deg, #2b3035 0%, #566387 100%);">
@@ -106,6 +107,93 @@
                     </div>
                 </div>
             </div>
+            
+            <!-- Market Data Cache Status Widget -->
+            <div class="col-12">
+                <div class="card shadow-sm border-0 h-100 
+                     {% if cache_status.cached %}border-success{% else %}border-warning{% endif %}">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="text-uppercase text-muted mb-2">
+                                    <i class="bi bi-database me-2"></i>Market Data Cache Status
+                                </h6>
+                                {% if cache_status.cached %}
+                                    <h5 class="mb-0 text-success">
+                                        <i class="bi bi-check-circle me-2"></i>Cache Active
+                                    </h5>
+                                    <small class="text-muted">
+                                        Data Points: {{ cache_status.data_count }} | 
+                                        {% if cache_status.ttl_minutes != 'unknown' %}
+                                            Next Refresh: <span id="cacheTimer" data-ttl="{{ cache_status.ttl_seconds }}">{{ cache_status.ttl_minutes }} minutes</span>
+                                        {% else %}
+                                            Next Refresh: <span id="cacheTimer" data-ttl="3600">1 hour (default)</span>
+                                        {% endif %}
+                                    </small>
+                                {% else %}
+                                    <h5 class="mb-0 text-warning">
+                                        <i class="bi bi-exclamation-triangle me-2"></i>Cache Empty/Expired
+                                    </h5>
+                                    <small class="text-muted">Market data will be fetched on next request</small>
+                                {% endif %}
+                            </div>
+                            <div class="text-end">
+                                <button id="refreshCacheBtn" class="btn btn-sm btn-outline-primary" onclick="refreshMarketCache()">
+                                    <i class="bi bi-arrow-clockwise me-1"></i>Refresh Now
+                                </button>
+                                <div id="refreshStatus" class="mt-2" style="display: none;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            {% comment %} <!-- Snapshot Status Widget -->
+            {% if request.snapshot_status %}
+                <div class="col-12">
+                    <div class="card shadow-sm border-0 h-100 
+                         {% if request.snapshot_status.should_generate %}border-warning{% elif request.snapshot_status.this_month_snapshot %}border-success{% else %}border-info{% endif %}">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-uppercase text-muted mb-2">
+                                        <i class="bi bi-graph-up-arrow me-2"></i>Monthly Snapshot Status
+                                    </h6>
+                                    {% if request.snapshot_status.should_generate %}
+                                        <h5 class="mb-0 text-warning">
+                                            <i class="bi bi-clock me-2"></i>Ready to Generate
+                                        </h5>
+                                        <small class="text-muted">Last day of month after 4 PM - will be generated automatically</small>
+                                    {% elif request.snapshot_status.this_month_snapshot %}
+                                        <h5 class="mb-0 text-success">
+                                            <i class="bi bi-check-circle me-2"></i>Generated for {{ request.snapshot_status.this_month_snapshot.snapshot_date|date:"F Y" }}
+                                        </h5>
+                                        <small class="text-muted">
+                                            Portfolio: Rs. {{ request.snapshot_status.this_month_snapshot.total_portfolio_value|floatformat:0 }}, 
+                                            P&L: Rs. {{ request.snapshot_status.this_month_snapshot.total_profit_loss|floatformat:0 }}
+                                        </small>
+                                    {% else %}
+                                        <h5 class="mb-0 text-info">
+                                            <i class="bi bi-calendar me-2"></i>Next Snapshot: End of Month
+                                        </h5>
+                                        <small class="text-muted">Automatic generation on last day after 4 PM</small>
+                                    {% endif %}
+                                </div>
+                                <div class="text-end">
+                                    <a href="{% url 'portfolio_snapshots' %}" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-eye me-1"></i>View Snapshots
+                                    </a>
+                                    {% if request.snapshot_status.should_generate %}
+                                        <a href="{% url 'generate_snapshot' %}" class="btn btn-sm btn-warning ms-2">
+                                            <i class="bi bi-plus me-1"></i>Generate Now
+                                        </a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %} {% endcomment %}
         </div>
     </div>
 
@@ -115,16 +203,16 @@
             <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center flex-wrap">
                 <div>
                     <h5 class="mb-0"><i class="bi bi-speedometer2 me-2"></i>Portfolio Performance</h5>
-                    <p class="text-muted small mb-0">Last 6 months vs NIFTY 50</p>
+                    <p class="text-muted small mb-0">Portfolio Value vs Invested Amount Over Time</p>
                 </div>
                 <div class="dropdown mt-2 mt-md-0">
                     <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                        <i class="bi bi-calendar-week me-1"></i> Last 6 Months
+                        <i class="bi bi-calendar-week me-1"></i> All Time
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end">
-                        <li><button class="dropdown-item range-btn active" data-range="6m">Last 6 Months</button></li>
+                        <li><button class="dropdown-item range-btn active" data-range="all">All Time</button></li>
+                        <li><button class="dropdown-item range-btn" data-range="6m">Last 6 Months</button></li>
                         <li><button class="dropdown-item range-btn" data-range="1y">Last Year</button></li>
-                        <li><button class="dropdown-item range-btn" data-range="all">All Time</button></li>
                     </ul>
                 </div>
             </div>
@@ -173,8 +261,13 @@
                                     </div>
                                     <div class="text-end">
                                         <div class="fw-bold">Rs. {{ stock.value|intcomma }}</div>
-                                        <div class="text-success small">
-                                            {{ stock.quantity|default:'0' }} shares
+                                        <div class="small">
+                                            <span class="text-muted">Market: Rs. {{ stock.current_price|floatformat:2 }}</span>
+                                            <br>
+                                            <span class="{% if stock.profit_loss >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                                P&L: Rs. {{ stock.profit_loss|floatformat:0 }}
+                                            </span>
+                                            <span class="text-muted">({{ stock.quantity|default:'0' }} shares)</span>
                                         </div>
                                     </div>
                                 </div>
@@ -228,7 +321,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             let label = context.dataset.label || '';
                             if (label) label += ': ';
                             if (context.parsed.y !== null) {
-                                label += context.parsed.y + '%';
+                                label += 'Rs. ' + context.parsed.y.toLocaleString();
                             }
                             return label;
                         }
@@ -240,9 +333,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     grid: { display: false }
                 },
                 y: {
-                    beginAtZero: false,
+                    beginAtZero: true,
                     ticks: {
-                        callback: function(value) { return value + '%'; }
+                        callback: function(value) { 
+                            return 'Rs. ' + value.toLocaleString(); 
+                        }
                     },
                     grid: { color: 'rgba(0, 0, 0, 0.05)' }
                 }
@@ -286,6 +381,98 @@ function renderSectorChart() {
 }
 
 document.addEventListener('DOMContentLoaded', renderSectorChart);
+
+// Cache Timer and Refresh Functionality
+let cacheTimerInterval;
+
+function startCacheTimer() {
+    const timerElement = document.getElementById('cacheTimer');
+    if (!timerElement) return;
+    
+    const ttlSeconds = parseInt(timerElement.dataset.ttl) || 3600;
+    let remainingSeconds = ttlSeconds;
+    
+    function updateTimer() {
+        if (remainingSeconds <= 0) {
+            timerElement.textContent = 'Expired - Refresh needed';
+            timerElement.className = 'text-danger';
+            clearInterval(cacheTimerInterval);
+            return;
+        }
+        
+        const hours = Math.floor(remainingSeconds / 3600);
+        const minutes = Math.floor((remainingSeconds % 3600) / 60);
+        const seconds = remainingSeconds % 60;
+        
+        if (hours > 0) {
+            timerElement.textContent = `${hours}h ${minutes}m ${seconds}s`;
+        } else if (minutes > 0) {
+            timerElement.textContent = `${minutes}m ${seconds}s`;
+        } else {
+            timerElement.textContent = `${seconds}s`;
+        }
+        
+        remainingSeconds--;
+    }
+    
+    updateTimer();
+    cacheTimerInterval = setInterval(updateTimer, 1000);
+}
+
+function refreshMarketCache() {
+    const btn = document.getElementById('refreshCacheBtn');
+    const statusDiv = document.getElementById('refreshStatus');
+    
+    // Disable button and show loading
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-arrow-clockwise spin me-1"></i>Refreshing...';
+    statusDiv.style.display = 'block';
+    statusDiv.innerHTML = '<div class="alert alert-info">Refreshing market data cache...</div>';
+    
+    // Make AJAX request
+    fetch('{% url "refresh_market_cache" %}', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            statusDiv.innerHTML = `<div class="alert alert-success">${data.message}</div>`;
+            // Restart timer with new TTL
+            if (data.cache_status && data.cache_status.cached) {
+                const timerElement = document.getElementById('cacheTimer');
+                if (timerElement) {
+                    timerElement.dataset.ttl = data.cache_status.ttl_seconds || 3600;
+                    clearInterval(cacheTimerInterval);
+                    startCacheTimer();
+                }
+            }
+        } else {
+            statusDiv.innerHTML = `<div class="alert alert-danger">${data.message}</div>`;
+        }
+    })
+    .catch(error => {
+        statusDiv.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+    })
+    .finally(() => {
+        // Re-enable button
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>Refresh Now';
+        
+        // Hide status after 5 seconds
+        setTimeout(() => {
+            statusDiv.style.display = 'none';
+        }, 5000);
+    });
+}
+
+// Start timer when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    startCacheTimer();
+});
 </script>
 
 <style>
@@ -342,6 +529,16 @@ document.addEventListener('DOMContentLoaded', renderSectorChart);
     .progress {
         border-radius: 3px;
         background-color: rgba(0, 0, 0, 0.05);
+    }
+    
+    /* Spinning animation for refresh button */
+    .spin {
+        animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
     }
     
     /* Mobile Responsive Styles */

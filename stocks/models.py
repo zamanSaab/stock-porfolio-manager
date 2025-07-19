@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
+from decimal import Decimal
 
 class Broker(models.Model):
     user = models.ForeignKey(User, null=True, on_delete=models.CASCADE, related_name='brokers')
@@ -11,6 +12,171 @@ class Broker(models.Model):
 
     def __str__(self):
         return self.name
+
+class MonthlyDeposit(models.Model):
+    user = models.ForeignKey(User, null=True, on_delete=models.CASCADE, related_name='monthly_deposits')
+    broker = models.ForeignKey(Broker, on_delete=models.CASCADE, related_name='monthly_deposits')
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    deposit_date = models.DateField()
+    description = models.CharField(max_length=255, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-deposit_date']
+        unique_together = ['broker', 'deposit_date']  # One deposit per broker per date
+
+    def __str__(self):
+        return f"{self.broker.name} - {self.amount} - {self.deposit_date}"
+
+    def save(self, *args, **kwargs):
+        # Update broker's free amount when deposit is saved
+        if not self.pk:  # New deposit
+            self.broker.free_amount += self.amount
+            self.broker.total_amount += self.amount
+            self.broker.save()
+        else:  # Updating existing deposit
+            old_deposit = MonthlyDeposit.objects.get(pk=self.pk)
+            amount_difference = self.amount - old_deposit.amount
+            self.broker.free_amount += amount_difference
+            self.broker.total_amount += amount_difference
+            self.broker.save()
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        # Update broker's free amount when deposit is deleted
+        self.broker.free_amount -= self.amount
+        self.broker.total_amount -= self.amount
+        self.broker.save()
+        super().delete(*args, **kwargs)
+
+class MonthlyPortfolioSnapshot(models.Model):
+    user = models.ForeignKey(User, null=True, on_delete=models.CASCADE, related_name='portfolio_snapshots')
+    snapshot_date = models.DateField()
+    total_invested_amount = models.DecimalField(max_digits=15, decimal_places=2)
+    total_portfolio_value = models.DecimalField(max_digits=15, decimal_places=2)
+    total_free_amount = models.DecimalField(max_digits=15, decimal_places=2)
+    total_profit_loss = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True, default=0)
+    profit_loss_percentage = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True, default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-snapshot_date']
+        unique_together = ['user', 'snapshot_date']  # One snapshot per user per date
+
+    def __str__(self):
+        return f"{self.user.username} - {self.snapshot_date} - Portfolio: Rs. {self.total_portfolio_value}"
+
+    @property
+    def month_year(self):
+        """Return month and year for display"""
+        return self.snapshot_date.strftime('%B %Y')
+
+    @property
+    def is_profitable(self):
+        """Check if portfolio is profitable"""
+        return self.total_profit_loss > 0
+
+    @classmethod
+    def create_monthly_snapshot(cls, user, snapshot_date):
+        """Create a monthly snapshot for a user on a specific date"""
+        from datetime import datetime
+        
+        # Calculate total invested amount (sum of all deposits)
+        total_invested = MonthlyDeposit.objects.filter(
+            user=user,
+            deposit_date__lte=snapshot_date
+        ).aggregate(total=models.Sum('amount'))['total'] or Decimal('0.00')
+        
+        # Calculate total portfolio value (stocks + free amounts)
+        total_portfolio_value = Decimal('0.00')
+        total_free_amount = Decimal('0.00')
+        
+        # Get all active stocks with their current values
+        stocks = Stock.objects.filter(user=user, is_active=True)
+        
+        # Import fetch_market_watch_data function
+        from .utils import fetch_market_watch_data
+        
+        # Get current market prices for all stocks
+        stock_symbols = [stock.symbol for stock in stocks]
+        market_data = None
+        if stock_symbols:
+            try:
+                market_data = fetch_market_watch_data(stock_symbols)
+                if market_data is not None:
+                    market_data = market_data.set_index('SYMBOL')['CURRENT'].to_dict()
+            except Exception as e:
+                print(f"Error fetching market data for snapshot: {e}")
+                market_data = {}
+        
+        for stock in stocks:
+            if stock.total_quantity > 0:
+                # Use current market price if available, otherwise use average price
+                if market_data and stock.symbol in market_data:
+                    try:
+                        current_price = float(market_data[stock.symbol].replace(',', ''))
+                    except (ValueError, AttributeError):
+                        current_price = stock.avg_price
+                else:
+                    current_price = stock.avg_price
+                
+                # Convert current_price to Decimal for consistency
+                current_price_decimal = Decimal(str(current_price))
+                stock_value = stock.total_quantity * current_price_decimal
+                total_portfolio_value += stock_value
+        
+        # Add free amounts from all brokers
+        brokers = Broker.objects.filter(user=user)
+        for broker in brokers:
+            total_free_amount += broker.free_amount
+        
+        total_portfolio_value += total_free_amount
+        
+        # Calculate profit/loss
+        total_profit_loss = total_portfolio_value - total_invested
+        
+        # Calculate profit/loss percentage
+        profit_loss_percentage = Decimal('0.00')
+        if total_invested > 0:
+            profit_loss_percentage = (total_profit_loss / total_invested) * 100
+        
+        # Create or update snapshot
+        snapshot, created = cls.objects.update_or_create(
+            user=user,
+            snapshot_date=snapshot_date,
+            defaults={
+                'total_invested_amount': total_invested,
+                'total_portfolio_value': total_portfolio_value,
+                'total_free_amount': total_free_amount,
+                'total_profit_loss': total_profit_loss,
+                'profit_loss_percentage': profit_loss_percentage,
+            }
+        )
+        
+        return snapshot
+
+    @classmethod
+    def get_latest_snapshot(cls, user):
+        """Get the latest snapshot for a user"""
+        return cls.objects.filter(user=user).first()
+
+    @classmethod
+    def get_monthly_growth(cls, user, months=12):
+        """Get monthly growth data for charts"""
+        from datetime import datetime, timedelta
+        from dateutil.relativedelta import relativedelta
+        
+        end_date = datetime.now().date()
+        start_date = end_date - relativedelta(months=months)
+        
+        snapshots = cls.objects.filter(
+            user=user,
+            snapshot_date__range=[start_date, end_date]
+        ).order_by('snapshot_date')
+        
+        return snapshots
 
 class Stock(models.Model):
     user = models.ForeignKey(User, null=True, on_delete=models.CASCADE, related_name='stocks')

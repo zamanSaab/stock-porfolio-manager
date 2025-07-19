@@ -1,0 +1,9 @@
+{% extends "admin/index.html" %}
+{% load i18n %}
+
+{% block content %}
+    {% if cache_status %}
+        {{ cache_status|safe }}
+    {% endif %}
+    {{ block.super }}
+{% endblock %} 

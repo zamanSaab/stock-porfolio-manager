@@ -1,0 +1,298 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
+        <a href="{% url 'monthly_deposit_list' %}" class="d-none d-sm-inline-block btn btn-sm btn-secondary shadow-sm">
+            <i class="fas fa-arrow-left fa-sm text-white-50"></i> Back to Deposits
+        </a>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-xl-8 col-lg-10">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Deposit Details</h6>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        {% if form.errors %}
+                        <div class="alert alert-danger">
+                            <h6 class="alert-heading">Please correct the following errors:</h6>
+                            <ul class="mb-0">
+                                {% for field, errors in form.errors.items %}
+                                    {% for error in errors %}
+                                        <li>{{ error }}</li>
+                                    {% endfor %}
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endif %}
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.broker.id_for_label }}" class="form-label">
+                                    <i class="fas fa-university"></i> Broker *
+                                </label>
+                                {{ form.broker }}
+                                {% if form.broker.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in form.broker.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                                <small class="form-text text-muted">Select the broker where you made the deposit</small>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.deposit_date.id_for_label }}" class="form-label">
+                                    <i class="fas fa-calendar"></i> Deposit Date *
+                                </label>
+                                {{ form.deposit_date }}
+                                {% if form.deposit_date.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in form.deposit_date.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                                <small class="form-text text-muted">When did you make this deposit?</small>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.amount.id_for_label }}" class="form-label">
+                                    <i class="fas fa-money-bill-wave"></i> Amount (Rs.) *
+                                </label>
+                                {{ form.amount }}
+                                {% if form.amount.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in form.amount.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                                <small class="form-text text-muted">Enter the deposit amount in Pakistani Rupees</small>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.description.id_for_label }}" class="form-label">
+                                    <i class="fas fa-comment"></i> Description
+                                </label>
+                                {{ form.description }}
+                                {% if form.description.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in form.description.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                                <small class="form-text text-muted">Optional: Salary, Bonus, Savings, etc.</small>
+                            </div>
+                        </div>
+
+                        <!-- Preview Section -->
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <div class="card border-left-info">
+                                    <div class="card-body">
+                                        <h6 class="card-title text-info">
+                                            <i class="fas fa-eye"></i> Deposit Preview
+                                        </h6>
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <strong>Broker:</strong><br>
+                                                <span id="preview-broker">-</span>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <strong>Date:</strong><br>
+                                                <span id="preview-date">-</span>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <strong>Amount:</strong><br>
+                                                <span id="preview-amount" class="text-success font-weight-bold">-</span>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <strong>Description:</strong><br>
+                                                <span id="preview-description">-</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <div class="d-flex justify-content-between">
+                                    <a href="{% url 'monthly_deposit_list' %}" class="btn btn-secondary">
+                                        <i class="fas fa-times"></i> Cancel
+                                    </a>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save"></i> 
+                                        {% if deposit %}Update{% else %}Save{% endif %} Deposit
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Form field references
+    const brokerField = document.getElementById('{{ form.broker.id_for_label }}');
+    const dateField = document.getElementById('{{ form.deposit_date.id_for_label }}');
+    const amountField = document.getElementById('{{ form.amount.id_for_label }}');
+    const descriptionField = document.getElementById('{{ form.description.id_for_label }}');
+
+    // Preview elements
+    const previewBroker = document.getElementById('preview-broker');
+    const previewDate = document.getElementById('preview-date');
+    const previewAmount = document.getElementById('preview-amount');
+    const previewDescription = document.getElementById('preview-description');
+
+    // Update preview function
+    function updatePreview() {
+        // Update broker preview
+        if (brokerField.value) {
+            const selectedOption = brokerField.options[brokerField.selectedIndex];
+            previewBroker.textContent = selectedOption.text;
+        } else {
+            previewBroker.textContent = '-';
+        }
+
+        // Update date preview
+        if (dateField.value) {
+            const date = new Date(dateField.value);
+            previewDate.textContent = date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+        } else {
+            previewDate.textContent = '-';
+        }
+
+        // Update amount preview
+        if (amountField.value) {
+            const amount = parseFloat(amountField.value);
+            if (!isNaN(amount)) {
+                previewAmount.textContent = 'Rs. ' + amount.toLocaleString();
+            } else {
+                previewAmount.textContent = '-';
+            }
+        } else {
+            previewAmount.textContent = '-';
+        }
+
+        // Update description preview
+        if (descriptionField.value) {
+            previewDescription.textContent = descriptionField.value;
+        } else {
+            previewDescription.textContent = '-';
+        }
+    }
+
+    // Add event listeners
+    brokerField.addEventListener('change', updatePreview);
+    dateField.addEventListener('input', updatePreview);
+    amountField.addEventListener('input', updatePreview);
+    descriptionField.addEventListener('input', updatePreview);
+
+    // Initialize preview
+    updatePreview();
+
+    // Form validation
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function(e) {
+        let isValid = true;
+        const requiredFields = [brokerField, dateField, amountField];
+
+        requiredFields.forEach(field => {
+            if (!field.value.trim()) {
+                field.classList.add('is-invalid');
+                isValid = false;
+            } else {
+                field.classList.remove('is-invalid');
+            }
+        });
+
+        // Validate amount
+        if (amountField.value) {
+            const amount = parseFloat(amountField.value);
+            if (isNaN(amount) || amount <= 0) {
+                amountField.classList.add('is-invalid');
+                isValid = false;
+            }
+        }
+
+        if (!isValid) {
+            e.preventDefault();
+            alert('Please fill in all required fields correctly.');
+        }
+    });
+});
+</script>
+
+<style>
+/* Form Styling */
+.form-control:focus {
+    border-color: #4e73df;
+    box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.25);
+}
+
+.form-label {
+    font-weight: 600;
+    color: #5a5c69;
+}
+
+.invalid-feedback {
+    display: block;
+}
+
+/* Preview Card Styling */
+.card.border-left-info {
+    border-left: 0.25rem solid #36b9cc !important;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .card-body {
+        padding: 1rem;
+    }
+    
+    .btn {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+    
+    .d-flex.justify-content-between {
+        flex-direction: column;
+    }
+}
+
+/* Animation */
+.card {
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
+</style>
+{% endblock %} 

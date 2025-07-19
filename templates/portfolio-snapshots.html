@@ -1,0 +1,332 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Portfolio Snapshots{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Portfolio Snapshots</h1>
+        <div>
+            <a href="{% url 'generate_snapshot' %}" class="d-none d-sm-inline-block btn btn-sm btn-success shadow-sm me-2">
+                <i class="fas fa-plus fa-sm text-white-50"></i> Generate Snapshot
+            </a>
+            <a href="{% url 'monthly_deposit_list' %}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
+                <i class="fas fa-piggy-bank fa-sm text-white-50"></i> Monthly Deposits
+            </a>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Total Snapshots</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_snapshots }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-calendar fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Latest Portfolio Value</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {% if latest_snapshot %}
+                                    Rs. {{ latest_snapshot.total_portfolio_value|floatformat:0 }}
+                                {% else %}
+                                    Rs. 0
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Average P&L</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {% if avg_profit_loss >= 0 %}
+                                    <span class="text-success">+Rs. {{ avg_profit_loss|floatformat:0 }}</span>
+                                {% else %}
+                                    <span class="text-danger">Rs. {{ avg_profit_loss|floatformat:0 }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-chart-line fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Average P&L %</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {% if avg_profit_percentage >= 0 %}
+                                    <span class="text-success">+{{ avg_profit_percentage|floatformat:1 }}%</span>
+                                {% else %}
+                                    <span class="text-danger">{{ avg_profit_percentage|floatformat:1 }}%</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-percentage fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Portfolio Growth Chart -->
+    <div class="row mb-4">
+        <div class="col-xl-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Portfolio Growth Over Time</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-area" style="height: 400px;">
+                        <canvas id="portfolioGrowthChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Snapshots Table -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+            <h6 class="m-0 font-weight-bold text-primary">All Portfolio Snapshots</h6>
+            <a href="{% url 'generate_snapshot' %}" class="btn btn-success btn-sm">
+                <i class="fas fa-plus"></i> Generate Snapshot
+            </a>
+        </div>
+        <div class="card-body">
+            <!-- Desktop Table -->
+            <div class="table-responsive d-none d-md-block">
+                <table class="table table-bordered" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Invested Amount</th>
+                            <th>Portfolio Value</th>
+                            <th>Free Amount</th>
+                            <th>Profit/Loss</th>
+                            <th>P&L %</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for snapshot in snapshots %}
+                        <tr>
+                            <td>{{ snapshot.snapshot_date|date:"M d, Y" }}</td>
+                            <td class="text-info font-weight-bold">Rs. {{ snapshot.total_invested_amount|floatformat:0 }}</td>
+                            <td class="text-primary font-weight-bold">Rs. {{ snapshot.total_portfolio_value|floatformat:0 }}</td>
+                            <td class="text-secondary">Rs. {{ snapshot.total_free_amount|floatformat:0 }}</td>
+                            <td class="{% if snapshot.total_profit_loss >= 0 %}text-success{% else %}text-danger{% endif %} font-weight-bold">
+                                {% if snapshot.total_profit_loss >= 0 %}+{% endif %}Rs. {{ snapshot.total_profit_loss|floatformat:0 }}
+                            </td>
+                            <td class="{% if snapshot.profit_loss_percentage >= 0 %}text-success{% else %}text-danger{% endif %} font-weight-bold">
+                                {% if snapshot.profit_loss_percentage >= 0 %}+{% endif %}{{ snapshot.profit_loss_percentage|floatformat:1 }}%
+                            </td>
+                            <td>
+                                <a href="{% url 'snapshot_detail' snapshot.pk %}" class="btn btn-sm btn-info">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{% url 'delete_snapshot' snapshot.pk %}" class="btn btn-sm btn-danger">
+                                    <i class="fas fa-trash"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center">No snapshots found</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Mobile Cards -->
+            <div class="d-md-none">
+                {% for snapshot in snapshots %}
+                <div class="card mb-3 border-left-primary">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-8">
+                                <h6 class="card-title text-primary">{{ snapshot.snapshot_date|date:"F d, Y" }}</h6>
+                                <p class="card-text text-muted mb-1">
+                                    <strong>Invested:</strong> Rs. {{ snapshot.total_invested_amount|floatformat:0 }}
+                                </p>
+                                <p class="card-text text-muted mb-1">
+                                    <strong>Portfolio:</strong> Rs. {{ snapshot.total_portfolio_value|floatformat:0 }}
+                                </p>
+                                <p class="card-text text-muted mb-1">
+                                    <strong>Free:</strong> Rs. {{ snapshot.total_free_amount|floatformat:0 }}
+                                </p>
+                            </div>
+                            <div class="col-4 text-right">
+                                <h5 class="{% if snapshot.total_profit_loss >= 0 %}text-success{% else %}text-danger{% endif %} font-weight-bold">
+                                    {% if snapshot.total_profit_loss >= 0 %}+{% endif %}Rs. {{ snapshot.total_profit_loss|floatformat:0 }}
+                                </h5>
+                                <p class="{% if snapshot.profit_loss_percentage >= 0 %}text-success{% else %}text-danger{% endif %} font-weight-bold">
+                                    {% if snapshot.profit_loss_percentage >= 0 %}+{% endif %}{{ snapshot.profit_loss_percentage|floatformat:1 }}%
+                                </p>
+                                <div class="btn-group-vertical btn-group-sm">
+                                    <a href="{% url 'snapshot_detail' snapshot.pk %}" class="btn btn-info btn-sm">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="{% url 'delete_snapshot' snapshot.pk %}" class="btn btn-danger btn-sm">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center py-4">
+                    <i class="fas fa-chart-line fa-3x text-gray-300 mb-3"></i>
+                    <p class="text-muted">No portfolio snapshots found</p>
+                    <a href="{% url 'generate_snapshot' %}" class="btn btn-success">
+                        <i class="fas fa-plus"></i> Generate First Snapshot
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Fetch chart data
+    fetch('{% url "portfolio_growth_chart_data" %}')
+        .then(response => response.json())
+        .then(data => {
+            const ctx = document.getElementById('portfolioGrowthChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.labels,
+                    datasets: [
+                        {
+                            label: 'Portfolio Value',
+                            data: data.portfolio_data,
+                            borderColor: '#4e73df',
+                            backgroundColor: 'rgba(78, 115, 223, 0.1)',
+                            borderWidth: 3,
+                            tension: 0.4,
+                            fill: true
+                        },
+                        {
+                            label: 'Invested Amount',
+                            data: data.invested_data,
+                            borderColor: '#858796',
+                            backgroundColor: 'rgba(133, 135, 150, 0.1)',
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            tension: 0.4,
+                            fill: false
+                        },
+                        {
+                            label: 'Profit/Loss',
+                            data: data.profit_loss_data,
+                            borderColor: '#1cc88a',
+                            backgroundColor: 'rgba(28, 200, 138, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.4,
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return 'Rs. ' + value.toLocaleString();
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': Rs. ' + context.parsed.y.toLocaleString();
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        })
+        .catch(error => {
+            console.error('Error loading chart data:', error);
+        });
+});
+</script>
+
+<style>
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+    .card-body {
+        padding: 1rem;
+    }
+    
+    .btn-group-vertical .btn {
+        margin-bottom: 0.25rem;
+    }
+    
+    .chart-area {
+        height: 300px;
+    }
+}
+
+/* Hover Effects */
+.table tbody tr:hover {
+    background-color: rgba(78, 115, 223, 0.05);
+}
+
+.card:hover {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+    transition: box-shadow 0.3s ease-in-out;
+}
+</style>
+{% endblock %} 
