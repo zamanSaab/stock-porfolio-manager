@@ -59,9 +59,9 @@ def index(request):
             try:
                 current_price = float(market_data[stock.symbol].replace(',', ''))
             except (ValueError, AttributeError):
-                current_price = stock.avg_price
+                current_price = float(stock.avg_price)
         else:
-            current_price = stock.avg_price
+            current_price = float(stock.avg_price)
         
         value = current_price * stock.total_quantity
         total_value += value
