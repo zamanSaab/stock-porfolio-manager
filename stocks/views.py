@@ -14,6 +14,7 @@ import json
 from datetime import datetime, timedelta
 from django.db.models.functions import TruncMonth
 from dateutil.relativedelta import relativedelta
+from django.core.paginator import Paginator
 
 @login_required
 def index(request):
@@ -270,8 +271,12 @@ def broker_list(request):
     brokers = Broker.objects.filter(user=request.user)
     total_amount = sum(broker.total_amount for broker in brokers)
     free_amount = sum(broker.free_amount for broker in brokers)
+    paginator = Paginator(brokers, 10)  # 10 per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
     return render(request, 'brokers.html', {
-        'brokers': brokers,
+        'page_obj': page_obj,
+        'brokers': brokers,  # for summary if needed
         'total_amount': total_amount,
         'free_amount': free_amount,
     })
@@ -293,12 +298,18 @@ def stock_list(request):
             )
         )
     ).filter(quantity__gt=0).order_by('-name')
-    return render(request, 'stocks.html', {'stocks': stocks})
+    paginator = Paginator(stocks, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    return render(request, 'stocks.html', {'page_obj': page_obj, 'stocks': stocks})
 
 @login_required
 def transaction_list(request):
     transactions = Transaction.objects.filter(user=request.user)
-    return render(request, 'transactions.html', {'transactions': transactions})
+    paginator = Paginator(transactions, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    return render(request, 'transactions.html', {'page_obj': page_obj, 'transactions': transactions})
 
 
 @login_required
@@ -524,7 +535,10 @@ def dividend_list(request):
         dividends = dividends.order_by('-amount')
     elif filter_param == 'impact':
         dividends = dividends.filter(impact_average=True)
-    return render(request, 'dividends.html', {'dividends': dividends})
+    paginator = Paginator(dividends, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    return render(request, 'dividends.html', {'page_obj': page_obj, 'dividends': dividends})
 
 @login_required
 def add_dividend(request):
@@ -588,7 +602,11 @@ def monthly_deposit_list(request):
         deposit_count=Sum(1)
     ).order_by('-total_amount')
     
+    paginator = Paginator(deposits, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
     return render(request, 'monthly-deposits.html', {
+        'page_obj': page_obj,
         'deposits': deposits,
         'total_deposits': total_deposits,
         'current_year_deposits': current_year_deposits,
@@ -707,7 +725,11 @@ def portfolio_snapshots(request):
     # Get monthly growth data for charts
     monthly_growth = snapshots[:12]  # Last 12 months
     
+    paginator = Paginator(snapshots, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
     return render(request, 'portfolio-snapshots.html', {
+        'page_obj': page_obj,
         'snapshots': snapshots,
         'latest_snapshot': latest_snapshot,
         'total_snapshots': total_snapshots,

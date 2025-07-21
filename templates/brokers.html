@@ -1,6 +1,7 @@
-{% extends 'base.html' %}
-{% load crispy_forms_tags %}
+{% extends "base.html" %}
+{% load static %}
 {% load humanize %}
+{% block title %}Brokers{% endblock title %}
 
 {% block content %}
 <div class="content-header">
@@ -27,7 +28,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for broker in brokers %}
+                    {% for broker in page_obj %}
                     <tr>
                         <td>
                             <div class="d-flex align-items-center">
@@ -54,7 +55,7 @@
         </div>
         
         <!-- Mobile Cards -->
-        {% for broker in brokers %}
+        {% for broker in page_obj %}
         <div class="mobile-card">
             <div class="card-header">
                 <div class="d-flex align-items-center">
@@ -84,12 +85,61 @@
         {% endfor %}
     </div>
     
-    <!-- Total Row -->
-    <div class="mt-4 p-3 bg-light rounded">
-        <div class="d-flex justify-content-between align-items-center">
-            <strong>Total Free Amount:</strong>
-            <strong class="amount-positive">Rs. {{ free_amount|floatformat:2|intcomma }}</strong>
-        </div>
+    <!-- Pagination -->
+    <nav aria-label="Page navigation">
+        <ul class="pagination justify-content-center mt-4">
+            {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1" aria-label="First">
+                        <span aria-hidden="true">««</span>
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="Previous">
+                        <span aria-hidden="true">«</span>
+                    </a>
+                </li>
+            {% else %}
+                <li class="page-item disabled">
+                    <a class="page-link" href="#" tabindex="-1" aria-disabled="true">««</a>
+                </li>
+                <li class="page-item disabled">
+                    <a class="page-link" href="#" tabindex="-1" aria-disabled="true">«</a>
+                </li>
+            {% endif %}
+
+            <li class="page-item disabled">
+                <a class="page-link" href="#">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</a>
+            </li>
+
+            {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="Next">
+                        <span aria-hidden="true">»</span>
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}" aria-label="Last">
+                        <span aria-hidden="true">»»</span>
+                    </a>
+                </li>
+            {% else %}
+                <li class="page-item disabled">
+                    <a class="page-link" href="#" tabindex="-1" aria-disabled="true">»</a>
+                </li>
+                <li class="page-item disabled">
+                    <a class="page-link" href="#" tabindex="-1" aria-disabled="true">»»</a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+</div>
+
+<!-- Total Row -->
+<div class="mt-4 p-3 bg-light rounded">
+    <div class="d-flex justify-content-between align-items-center">
+        <strong>Total Free Amount:</strong>
+        <strong class="amount-positive">Rs. {{ free_amount|floatformat:2|intcomma }}</strong>
     </div>
 </div>
-{% endblock %}
+{% endblock content %}

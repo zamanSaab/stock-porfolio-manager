@@ -1,7 +1,8 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 {% load static %}
+{% load humanize %}
 
-{% block title %}Monthly Deposits{% endblock %}
+{% block title %}Monthly Deposits{% endblock title %}
 
 {% block content %}
 <div class="container-fluid">
@@ -11,135 +12,6 @@
         <a href="{% url 'add_monthly_deposit' %}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
             <i class="fas fa-plus fa-sm text-white-50"></i> Add Deposit
         </a>
-    </div>
-
-    <!-- Summary Cards -->
-    <div class="row mb-4">
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-primary shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                Total Deposits</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">Rs. {{ total_deposits|floatformat:0 }}</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-calendar fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-success shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                This Year</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">Rs. {{ current_year_deposits|floatformat:0 }}</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-info shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                Total Deposits</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ deposits.count }}</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-clipboard-list fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-warning shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                Average Monthly</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                {% if deposits.count > 0 %}
-                                    Rs. {{ average_monthly|floatformat:0 }}
-                                {% else %}
-                                    Rs. 0
-                                {% endif %}
-                            </div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-chart-line fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Charts Row -->
-    <div class="row mb-4">
-        <!-- Monthly Trend Chart -->
-        <div class="col-xl-8 col-lg-7">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                    <h6 class="m-0 font-weight-bold text-primary">Monthly Deposit Trend</h6>
-                </div>
-                <div class="card-body">
-                    <div class="chart-area">
-                        <canvas id="monthlyDepositChart"></canvas>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Broker Summary -->
-        <div class="col-xl-4 col-lg-5">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Broker Summary</h6>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-bordered" width="100%" cellspacing="0">
-                            <thead>
-                                <tr>
-                                    <th>Broker</th>
-                                    <th>Total</th>
-                                    <th>Count</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for broker in broker_summary %}
-                                <tr>
-                                    <td>{{ broker.broker__name }}</td>
-                                    <td>Rs. {{ broker.total_amount|floatformat:0 }}</td>
-                                    <td>{{ broker.deposit_count }}</td>
-                                </tr>
-                                {% empty %}
-                                <tr>
-                                    <td colspan="3" class="text-center">No deposits found</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
 
     <!-- Deposits Table -->
@@ -164,7 +36,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for deposit in deposits %}
+                        {% for deposit in page_obj %}
                         <tr>
                             <td>{{ deposit.deposit_date|date:"M d, Y" }}</td>
                             <td>{{ deposit.broker.name }}</td>
@@ -190,7 +62,7 @@
 
             <!-- Mobile Cards -->
             <div class="d-md-none">
-                {% for deposit in deposits %}
+                {% for deposit in page_obj %}
                 <div class="card mb-3 border-left-primary">
                     <div class="card-body">
                         <div class="row">
@@ -229,6 +101,103 @@
                 </div>
                 {% endfor %}
             </div>
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center mt-4">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1" aria-label="First">
+                                <span aria-hidden="true">««</span>
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="Previous">
+                                <span aria-hidden="true">«</span>
+                            </a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled">
+                            <a class="page-link" href="#" tabindex="-1" aria-disabled="true">««</a>
+                        </li>
+                        <li class="page-item disabled">
+                            <a class="page-link" href="#" tabindex="-1" aria-disabled="true">«</a>
+                        </li>
+                    {% endif %}
+
+                    <li class="page-item disabled">
+                        <a class="page-link" href="#">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</a>
+                    </li>
+
+                    {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="Next">
+                                <span aria-hidden="true">»</span>
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}" aria-label="Last">
+                                <span aria-hidden="true">»»</span>
+                            </a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled">
+                            <a class="page-link" href="#" tabindex="-1" aria-disabled="true">»</a>
+                        </li>
+                        <li class="page-item disabled">
+                            <a class="page-link" href="#" tabindex="-1" aria-disabled="true">»»</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Summary Cards and Chart -->
+    <div class="row">
+        <!-- Summary Cards -->
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Summary</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="font-weight-bold">Total Deposits:</span>
+                        <span class="badge badge-primary badge-pill">Rs. {{ total_deposits|floatformat:0 }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="font-weight-bold">Current Year:</span>
+                        <span class="badge badge-success badge-pill">Rs. {{ current_year_deposits|floatformat:0 }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="font-weight-bold">Avg Monthly:</span>
+                        <span class="badge badge-info badge-pill">Rs. {{ average_monthly|floatformat:0 }}</span>
+                    </div>
+                    <hr>
+                    <h6 class="font-weight-bold text-primary">Broker Summary</h6>
+                    <ul class="list-group list-group-flush">
+                        {% for broker in broker_summary %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            {{ broker.broker__name }}
+                            <span class="badge badge-secondary badge-pill">Rs. {{ broker.total_amount|floatformat:0 }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Chart -->
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Monthly Deposit Trend</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-bar">
+                        <canvas id="monthlyDepositChart"></canvas>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -249,7 +218,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     datasets: [{
                         label: 'Monthly Deposits',
                         data: data.data,
-                        backgroundColor: 'rgba(78, 115, 223, 0.8)',
+                        backgroundColor: 'rgba(78, 115, 223, 0.5)',
                         borderColor: 'rgba(78, 115, 223, 1)',
                         borderWidth: 1
                     }]
@@ -261,7 +230,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         y: {
                             beginAtZero: true,
                             ticks: {
-                                callback: function(value) {
+                                callback: function(value, index, values) {
                                     return 'Rs. ' + value.toLocaleString();
                                 }
                             }
@@ -271,7 +240,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
-                                    return 'Deposits: Rs. ' + context.parsed.y.toLocaleString();
+                                    return 'Deposit: Rs. ' + context.parsed.y.toLocaleString();
                                 }
                             }
                         }
@@ -286,29 +255,14 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <style>
-/* Mobile Responsive Styles */
-@media (max-width: 768px) {
-    .card-body {
-        padding: 1rem;
-    }
-    
-    .btn-group-vertical .btn {
-        margin-bottom: 0.25rem;
-    }
-    
-    .chart-area {
-        height: 300px;
-    }
+/* Additional custom styles */
+.badge-pill {
+    padding-right: .6em;
+    padding-left: .6em;
+    border-radius: 10rem;
 }
-
-/* Hover Effects */
-.table tbody tr:hover {
-    background-color: rgba(78, 115, 223, 0.05);
-}
-
-.card:hover {
-    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
-    transition: box-shadow 0.3s ease-in-out;
+.chart-bar {
+    height: 320px;
 }
 </style>
-{% endblock %} 
+{% endblock content %} 
