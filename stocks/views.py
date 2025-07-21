@@ -513,7 +513,11 @@ def earnings_history(request):
 def stock_transaction_history(request, pk):
     stock = get_object_or_404(Stock, pk=pk, user=request.user)
     transactions = stock.transactions.all()
-    return render(request, 'stock-transaction-history.html', {'transactions': transactions})
+    from django.core.paginator import Paginator
+    paginator = Paginator(transactions, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    return render(request, 'stock-transaction-history.html', {'page_obj': page_obj, 'transactions': transactions})
 
 def signup(request):
     if request.method == 'POST':
