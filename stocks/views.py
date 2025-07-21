@@ -87,7 +87,7 @@ def index(request):
     for data in stock_data:
         data['y'] = int((data['value']  / total_value)*100) if total_value > 0 else 0
 
-    top_holdings = sorted(stock_data, key=lambda x: x['value'], reverse=True)[:5]
+    top_holdings = sorted(stock_data, key=lambda x: x['value'], reverse=True)[:3]
 
     # Calculate actual portfolio metrics (moved up)
     brokers = Broker.objects.filter(user=request.user)

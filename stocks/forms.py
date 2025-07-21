@@ -4,6 +4,7 @@ from .models import Broker, Transaction, Stock, Dividend, MonthlyDeposit
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import get_user_model
 from decimal import Decimal
+from django.utils import timezone
 
 
 class BrokerForm(forms.ModelForm):
@@ -18,21 +19,26 @@ class BrokerForm(forms.ModelForm):
             self.fields['name'].queryset = Broker.objects.filter(user=user)
 
 class TransactionForm(forms.ModelForm):
+    date = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+        initial=timezone.now().date()
+    )
     commission = forms.DecimalField(
         label='Commission', required=False, decimal_places=2, max_digits=10, min_value=0,
-        help_text='Default commission rate = 0.2%'
+        help_text='Default commission rate = 0.15%'
     )
     sales_tax = forms.DecimalField(
         label='Sales Tax', required=False, decimal_places=2, max_digits=10, min_value=0,
-        help_text='Default sales tax rate = 0.15%'
+        help_text='Default sales tax rate = 0.0225%'
     )
     cdc_charges = forms.DecimalField(
         label='CDC Charges', required=False, decimal_places=2, max_digits=10, min_value=0,
-        help_text='Default CDC charges rate = 0.01%'
+        help_text='Default CDC charges rate = 0.5%'
     )
     class Meta:
         model = Transaction
-        fields = ['stock', 'quantity', 'broker', 'price', 'transaction_type', 'commission', 'sales_tax', 'cdc_charges']
+        fields = ['stock', 'quantity', 'broker', 'price', 'transaction_type', 'commission', 'sales_tax', 'cdc_charges', 'date']
 
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)
@@ -51,6 +57,10 @@ class TransactionForm(forms.ModelForm):
         sales_tax = cleaned_data.get('sales_tax')
         commission = cleaned_data.get('commission')
         cdc_charges = cleaned_data.get('cdc_charges')
+        date = cleaned_data.get('date')
+
+        if not date:
+            self.add_error('date', 'Please select a date.')
 
         # Convert to Decimal for precise calculations
         quantity = Decimal(str(quantity)) if quantity else Decimal('0')
@@ -60,16 +70,16 @@ class TransactionForm(forms.ModelForm):
         cdc_charges = Decimal(str(cdc_charges)) if cdc_charges else Decimal('0')
 
         total_amount = quantity * price
-        commission_rate = Decimal('0.002')  # 0.2%
-        sales_tax_rate = Decimal('0.0015')  # 0.15% 
-        cdc_rate = Decimal('0.0001')  # 0.01%
+        commission_rate = Decimal('0.0015')  # 0.2%
+        sales_tax_rate = Decimal('0.000225')  # 0.15% 
+        cdc_rate = Decimal('0.005')  # 0.01%
         
         if not sales_tax:
             sales_tax = total_amount * sales_tax_rate
         if not commission:
             commission = total_amount * commission_rate
         if not cdc_charges:
-            cdc_charges = total_amount * cdc_rate
+            cdc_charges = quantity * cdc_rate
 
         # Check if broker has sufficient quantity for sell transactions
         if transaction_type == 'sell' and stock and broker and quantity is not None:
