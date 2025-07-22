@@ -274,3 +274,31 @@ def create_dummy_market_data(symbols):
     except Exception as e:
         print(f"Error creating dummy data: {e}")
         return pd.DataFrame(columns=["SYMBOL", "CURRENT"])
+
+
+def get_last_closing_price_for_month(symbol, year, month):
+    """
+    Fetch the last closing price for a stock for a given year and month from the PSX EOD API.
+    """
+    import requests
+    import datetime
+    url = f"https://dps.psx.com.pk/timeseries/eod/{symbol}"
+    try:
+        response = requests.get(url, timeout=10)
+        if response.status_code != 200 and data:
+            return None
+        data = response.json().get('data')
+        last_close = None
+        last_date = None
+        for entry in data:
+            ts, close, volume, open_ = entry
+            dt = datetime.datetime.utcfromtimestamp(ts)
+            if dt.year == year and dt.month == month:
+                if last_date is None or dt > last_date:
+                    last_date = dt
+                    last_close = close
+        
+        return last_close
+    except Exception as e:
+        print(f"Error fetching EOD for {symbol}: {e}")
+        return None

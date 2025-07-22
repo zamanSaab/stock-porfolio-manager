@@ -43,6 +43,7 @@ urlpatterns = [
     # Portfolio Snapshots
     path('portfolio-snapshots/', views.portfolio_snapshots, name='portfolio_snapshots'),
     path('portfolio-snapshots/generate/', views.generate_snapshot, name='generate_snapshot'),
+    path('portfolio-snapshots/generate-eod/', views.generate_snapshot_eod, name='generate_snapshot_eod'),
     path('portfolio-snapshots/<int:pk>/', views.snapshot_detail, name='snapshot_detail'),
     path('portfolio-snapshots/<int:pk>/delete/', views.delete_snapshot, name='delete_snapshot'),
     path('portfolio-snapshots/chart-data/', views.portfolio_growth_chart_data, name='portfolio_growth_chart_data'),

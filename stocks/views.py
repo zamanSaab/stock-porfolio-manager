@@ -5,7 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
 from .models import Broker, Stock, Transaction, Dividend, MonthlyDeposit, MonthlyPortfolioSnapshot
 from .forms import BrokerForm, TransactionForm, StockForm, DividendForm, CustomSignupForm, MonthlyDepositForm
-from .utils import fetch_market_watch_data
+from .utils import fetch_market_watch_data, get_last_closing_price_for_month
 from django.db.models import Sum, Case, When, IntegerField, Avg, Q, F, FloatField, ExpressionWrapper
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView
@@ -15,6 +15,8 @@ from datetime import datetime, timedelta
 from django.db.models.functions import TruncMonth
 from dateutil.relativedelta import relativedelta
 from django.core.paginator import Paginator
+from django.views.decorators.http import require_POST
+from django.http import JsonResponse
 
 @login_required
 def index(request):
@@ -85,7 +87,7 @@ def index(request):
             "exploded": True,
         })
     for data in stock_data:
-        data['y'] = int((data['value']  / total_value)*100) if total_value > 0 else 0
+        data['y'] = float(round((data['value']  / total_value)*100, 2)) if total_value > 0 else 0
 
     top_holdings = sorted(stock_data, key=lambda x: x['value'], reverse=True)[:3]
 
@@ -297,7 +299,7 @@ def stock_list(request):
                 output_field=IntegerField()
             )
         )
-    ).filter(quantity__gt=0).order_by('-name')
+    ).filter(quantity__gt=0).order_by('name')
     paginator = Paginator(stocks, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
@@ -305,7 +307,7 @@ def stock_list(request):
 
 @login_required
 def transaction_list(request):
-    transactions = Transaction.objects.filter(user=request.user)
+    transactions = Transaction.objects.filter(user=request.user).order_by('-date')
     paginator = Paginator(transactions, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
@@ -867,4 +869,101 @@ def portfolio_growth_chart_data(request):
         'invested_data': invested_data,
         'portfolio_data': portfolio_data,
         'profit_loss_data': profit_loss_data,
+    })
+
+@login_required
+@require_POST
+def generate_snapshot_eod(request):
+    """
+    Generate a MonthlyPortfolioSnapshot for the current user for a given month using EOD API closing prices.
+    Accepts POST with 'month' and 'year'. Defaults to last month if not provided.
+    Returns JsonResponse with snapshot info.
+    """
+    import calendar
+    from .models import Stock, MonthlyDeposit, Broker, MonthlyPortfolioSnapshot
+    from django.db.models import Sum
+    from datetime import datetime
+    from dateutil.relativedelta import relativedelta
+    
+
+    # Get month/year from POST or default to last month
+    month = int(request.POST.get('month', 0))
+    year = int(request.POST.get('year', 0))
+    if not month or not year:
+        today = datetime.now().date()
+        last_month = today - relativedelta(months=1)
+        year = last_month.year
+        month = last_month.month
+    # Last day of the month
+    last_day = calendar.monthrange(year, month)[1]
+    snapshot_date = datetime(year, month, last_day).date()
+
+    user = request.user
+
+    # Get all stocks held as of that date
+    stocks = Stock.objects.filter(user=user)
+    stock_values = []
+    total_portfolio_value = 0
+
+    # import pdb; pdb.set_trace()
+    for stock in stocks:
+        # Calculate quantity as of snapshot_date
+        buy_qty = stock.transactions.filter(transaction_type='buy', date__lte=snapshot_date).aggregate(total=Sum('quantity'))['total'] or 0
+        sell_qty = stock.transactions.filter(transaction_type='sell', date__lte=snapshot_date).aggregate(total=Sum('quantity'))['total'] or 0
+        quantity = buy_qty - sell_qty
+        if quantity > 0:
+            close_price = get_last_closing_price_for_month(stock.symbol, year, month)
+            if close_price is None:
+                close_price = stock.avg_price  # fallback
+            value = quantity * float(close_price)
+            total_portfolio_value += value
+            stock_values.append({'symbol': stock.symbol, 'quantity': quantity, 'close_price': close_price, 'value': value})
+
+    # Sum all deposits up to snapshot_date
+    total_deposits = MonthlyDeposit.objects.filter(user=user, deposit_date__lte=snapshot_date).aggregate(total=Sum('amount'))['total'] or 0
+
+    # Total spent on buys up to snapshot_date
+    total_buys = Transaction.objects.filter(
+        user=user,
+        transaction_type='buy',
+        date__lte=snapshot_date
+    ).aggregate(total=Sum(F('quantity') * F('price')))['total'] or 0
+
+    # Total received from sells up to snapshot_date
+    total_sells = Transaction.objects.filter(
+        user=user,
+        transaction_type='sell',
+        date__lte=snapshot_date
+    ).aggregate(total=Sum(F('quantity') * F('price')))['total'] or 0
+
+    total_free_amount = float(total_deposits) - float(total_buys) + float(total_sells)
+
+    total_invested = MonthlyDeposit.objects.filter(user=user, deposit_date__lte=snapshot_date).aggregate(total=Sum('amount'))['total'] or 0
+
+    total_portfolio_value += total_free_amount
+    total_profit_loss = total_portfolio_value - float(total_invested)
+    profit_loss_percentage = (total_profit_loss / float(total_invested) * 100) if total_invested else 0
+
+    # Create or update snapshot
+    snapshot, created = MonthlyPortfolioSnapshot.objects.update_or_create(
+        user=user,
+        snapshot_date=snapshot_date,
+        defaults={
+            'total_invested_amount': total_invested,
+            'total_portfolio_value': total_portfolio_value,
+            'total_free_amount': total_free_amount,
+            'total_profit_loss': total_profit_loss,
+            'profit_loss_percentage': profit_loss_percentage,
+        }
+    )
+
+    return JsonResponse({
+        'success': True,
+        'created': created,
+        'snapshot_date': snapshot_date.strftime('%Y-%m-%d'),
+        'portfolio_value': total_portfolio_value,
+        'invested': total_invested,
+        'profit_loss': total_profit_loss,
+        'profit_loss_percentage': profit_loss_percentage,
+        'stock_values': stock_values,
     })
