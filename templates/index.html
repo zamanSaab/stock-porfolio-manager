@@ -197,28 +197,18 @@
         </div>
     </div>
 
-    <!-- Performance Chart Section -->
+    <!-- Portfolio Growth Chart Section -->
     <div class="container mt-5">
         <div class="card shadow-sm border-0 overflow-hidden">
             <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center flex-wrap">
                 <div>
-                    <h5 class="mb-0"><i class="bi bi-speedometer2 me-2"></i>Portfolio Performance</h5>
-                    <p class="text-muted small mb-0">Portfolio Value vs Invested Amount Over Time</p>
-                </div>
-                <div class="dropdown mt-2 mt-md-0">
-                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                        <i class="bi bi-calendar-week me-1"></i> All Time
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li><button class="dropdown-item range-btn active" data-range="all">All Time</button></li>
-                        <li><button class="dropdown-item range-btn" data-range="6m">Last 6 Months</button></li>
-                        <li><button class="dropdown-item range-btn" data-range="1y">Last Year</button></li>
-                    </ul>
+                    <h5 class="mb-0"><i class="bi bi-graph-up-arrow me-2"></i>Portfolio Growth Over Time</h5>
+                    <p class="text-muted small mb-0">Track your portfolio's growth journey and investment progress</p>
                 </div>
             </div>
             <div class="card-body p-0">
                 <div class="chart-container" style="position: relative; height: 400px;">
-                    <canvas id="performanceChart"></canvas>
+                    <canvas id="portfolioGrowthChart"></canvas>
                 </div>
             </div>
         </div>
@@ -290,65 +280,77 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.canvasjs.com/canvasjs.min.js"></script>
 <script>
-// Chart.js for Portfolio Performance
+// Chart.js for Portfolio Growth Over Time
 
 document.addEventListener('DOMContentLoaded', function() {
-    const perfCtx = document.getElementById('performanceChart').getContext('2d');
-    const performanceLabels = JSON.parse('{{ performance_labels_json|escapejs }}');
-    const performanceDatasets = JSON.parse('{{ performance_datasets_json|escapejs }}');
-    const performanceChart = new Chart(perfCtx, {
-        type: 'line',
-        data: {
-            labels: performanceLabels,
-            datasets: performanceDatasets
-        },
-        options: {
-            maintainAspectRatio: false,
-            responsive: true,
-            plugins: {
-                legend: {
-                    position: 'top',
-                    labels: {
-                        usePointStyle: true,
-                        padding: 20
-                    }
-                },
-                tooltip: {
-                    mode: 'index',
-                    intersect: false,
-                    callbacks: {
-                        label: function(context) {
-                            let label = context.dataset.label || '';
-                            if (label) label += ': ';
-                            if (context.parsed.y !== null) {
-                                label += 'Rs. ' + context.parsed.y.toLocaleString();
-                            }
-                            return label;
+    // Fetch chart data
+    fetch('{% url "portfolio_growth_chart_data" %}')
+        .then(response => response.json())
+        .then(data => {
+            const ctx = document.getElementById('portfolioGrowthChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.labels,
+                    datasets: [
+                        {
+                            label: 'Portfolio Value',
+                            data: data.portfolio_data,
+                            borderColor: '#4e73df',
+                            backgroundColor: 'rgba(78, 115, 223, 0.1)',
+                            borderWidth: 3,
+                            tension: 0.4,
+                            fill: true
+                        },
+                        {
+                            label: 'Invested Amount',
+                            data: data.invested_data,
+                            borderColor: '#858796',
+                            backgroundColor: 'rgba(133, 135, 150, 0.1)',
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            tension: 0.4,
+                            fill: false
+                        },
+                        {
+                            label: 'Profit/Loss',
+                            data: data.profit_loss_data,
+                            borderColor: '#1cc88a',
+                            backgroundColor: 'rgba(28, 200, 138, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.4,
+                            fill: false
                         }
-                    }
-                }
-            },
-            scales: {
-                x: {
-                    grid: { display: false }
+                    ]
                 },
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        callback: function(value) { 
-                            return 'Rs. ' + value.toLocaleString(); 
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return 'Rs. ' + value.toLocaleString();
+                                }
+                            }
                         }
                     },
-                    grid: { color: 'rgba(0, 0, 0, 0.05)' }
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': Rs. ' + context.parsed.y.toLocaleString();
+                                }
+                            }
+                        }
+                    }
                 }
-            },
-            interaction: {
-                mode: 'nearest',
-                axis: 'x',
-                intersect: false
-            }
-        }
-    });
+            });
+        })
+        .catch(error => {
+            console.error('Error loading chart data:', error);
+        });
 });
 
 // CanvasJS for Sector Allocation

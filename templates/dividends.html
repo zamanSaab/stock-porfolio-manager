@@ -158,5 +158,19 @@
             {% endif %}
         </ul>
     </nav>
+    
+    <!-- View All Section -->
+    <div class="d-flex justify-content-between align-items-center mt-3">
+        <div class="text-muted">
+            <small>Showing {{ page_obj.start_index }}-{{ page_obj.end_index }} of {{ total_count }} dividends</small>
+        </div>
+        {% if total_count > 10 %}
+        <div>
+            <a href="{% url 'dividend_list' %}" class="btn btn-outline-info btn-sm">
+                <i class="bi bi-list-ul"></i> View All {{ total_count }} Dividends
+            </a>
+        </div>
+        {% endif %}
+    </div>
 </div>
 {% endblock content %}

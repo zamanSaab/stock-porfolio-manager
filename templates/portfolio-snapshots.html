@@ -139,7 +139,7 @@
     <!-- Snapshots Table -->
     <div class="card shadow mb-4 border-0 rounded-4">
         <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between bg-gradient-info text-white rounded-top-4">
-            <h6 class="m-0 fw-bold"><i class="fas fa-database me-2"></i>All Portfolio Snapshots</h6>
+            <h6 class="m-0 fw-bold" style="color: black;"><i class="fas fa-database me-2"></i>All Portfolio Snapshots</h6>
             <a href="{% url 'generate_snapshot' %}" class="btn btn-success btn-sm">
                 <i class="fas fa-plus"></i> Generate Snapshot
             </a>
@@ -288,6 +288,20 @@
                     {% endif %}
                 </ul>
             </nav>
+            
+            <!-- View All Section -->
+            <div class="d-flex justify-content-between align-items-center mt-3">
+                <div class="text-muted">
+                    <small>Showing {{ page_obj.start_index }}-{{ page_obj.end_index }} of {{ total_count }} snapshots</small>
+                </div>
+                {% if total_count > 10 %}
+                <div>
+                    <a href="{% url 'portfolio_snapshots' %}" class="btn btn-outline-info btn-sm">
+                        <i class="fas fa-list"></i> View All {{ total_count }} Snapshots
+                    </a>
+                </div>
+                {% endif %}
+            </div>
         </div>
     </div>
 </div>

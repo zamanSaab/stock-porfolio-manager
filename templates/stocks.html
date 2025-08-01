@@ -146,6 +146,20 @@
             {% endif %}
         </ul>
     </nav>
+    
+    <!-- View All Section -->
+    <div class="d-flex justify-content-between align-items-center mt-3">
+        <div class="text-muted">
+            <small>Showing {{ page_obj.start_index }}-{{ page_obj.end_index }} of {{ total_count }} stocks</small>
+        </div>
+        {% if total_count > 10 %}
+        <div>
+            <a href="{% url 'stock_list' %}" class="btn btn-outline-info btn-sm">
+                <i class="bi bi-list-ul"></i> View All {{ total_count }} Stocks
+            </a>
+        </div>
+        {% endif %}
+    </div>
     {% else %}
     <div class="alert alert-info d-flex align-items-center" role="alert">
         <i class="bi bi-info-circle-fill me-2"></i>

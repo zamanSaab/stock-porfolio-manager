@@ -102,133 +102,6 @@ def index(request):
     )['total'] or 0
     total_invested_amount = round(float(total_invested_amount), 2)
 
-    # Get real portfolio performance data from snapshots
-    snapshots = MonthlyPortfolioSnapshot.objects.filter(user=request.user).order_by('snapshot_date')
-    
-    if snapshots.exists():
-        # Use actual snapshot data
-        performance_labels = []
-        portfolio_values = []
-        invested_amounts = []
-        
-        for snapshot in snapshots:
-            performance_labels.append(snapshot.snapshot_date.strftime('%b %Y'))
-            portfolio_values.append(float(snapshot.total_portfolio_value + snapshot.total_free_amount))
-            invested_amounts.append(float(snapshot.total_invested_amount))
-        
-        # Add current portfolio value as the latest data point
-        from datetime import datetime
-        current_month = datetime.now().strftime('%b %Y')
-        
-        # Only add current data if it's different from the last snapshot
-        if not performance_labels or performance_labels[-1] != current_month:
-            performance_labels.append(current_month)
-            portfolio_values.append(current_portfolio_value)
-            invested_amounts.append(total_invested_amount)
-        
-        performance_datasets = [
-            {
-                "label": "Portfolio Value",
-                "data": portfolio_values,
-                "borderColor": "#4e73df",
-                "backgroundColor": "rgba(78, 115, 223, 0.1)",
-                "borderWidth": 3,
-                "tension": 0.4,
-                "fill": True
-            },
-            {
-                "label": "Invested Amount",
-                "data": invested_amounts,
-                "borderColor": "#858796",
-                "backgroundColor": "rgba(133, 135, 150, 0.1)",
-                "borderWidth": 2,
-                "borderDash": [5, 5],
-                "tension": 0.4,
-                "fill": False
-            }
-        ]
-    else:
-        # Fallback to monthly deposit data if no snapshots exist
-        deposits = MonthlyDeposit.objects.filter(user=request.user).order_by('deposit_date')
-        
-        if deposits.exists():
-            # Group deposits by month
-            monthly_deposits = {}
-            for deposit in deposits:
-                month_key = deposit.deposit_date.strftime('%b %Y')
-                if month_key not in monthly_deposits:
-                    monthly_deposits[month_key] = 0
-                monthly_deposits[month_key] += float(deposit.amount)
-            
-            performance_labels = list(monthly_deposits.keys())
-            invested_amounts = list(monthly_deposits.values())
-            
-            # Calculate cumulative invested amount
-            cumulative_invested = []
-            total = 0
-            for amount in invested_amounts:
-                total += amount
-                cumulative_invested.append(total)
-            
-            # Estimate portfolio value (assuming some growth)
-            portfolio_values = [amount * 1.1 for amount in cumulative_invested]  # 10% growth estimate
-            
-            # Add current portfolio value as the latest data point
-            from datetime import datetime
-            current_month = datetime.now().strftime('%b %Y')
-            
-            # Only add current data if it's different from the last deposit month
-            if not performance_labels or performance_labels[-1] != current_month:
-                performance_labels.append(current_month)
-                portfolio_values.append(current_portfolio_value)
-                invested_amounts.append(total_invested_amount)
-            
-            performance_datasets = [
-                {
-                    "label": "Portfolio Value (Estimated)",
-                    "data": portfolio_values,
-                    "borderColor": "#4e73df",
-                    "backgroundColor": "rgba(78, 115, 223, 0.1)",
-                    "borderWidth": 3,
-                    "tension": 0.4,
-                    "fill": True
-                },
-                {
-                    "label": "Invested Amount",
-                    "data": cumulative_invested,
-                    "borderColor": "#858796",
-                    "backgroundColor": "rgba(133, 135, 150, 0.1)",
-                    "borderWidth": 2,
-                    "borderDash": [5, 5],
-                    "tension": 0.4,
-                    "fill": False
-                }
-            ]
-        else:
-            # No data available - show empty chart
-            performance_labels = ["No Data"]
-            performance_datasets = [
-                {
-                    "label": "Portfolio Value",
-                    "data": [0],
-                    "borderColor": "#4e73df",
-                    "backgroundColor": "rgba(78, 115, 223, 0.1)",
-                    "borderWidth": 3,
-                    "tension": 0.4,
-                    "fill": True
-                },
-                {
-                    "label": "Invested Amount",
-                    "data": [0],
-                    "borderColor": "#858796",
-                    "backgroundColor": "rgba(133, 135, 150, 0.1)",
-                    "borderWidth": 2,
-                    "borderDash": [5, 5],
-                    "tension": 0.4,
-                    "fill": False
-                }
-            ]
-    
     # Calculate current profit/loss
     current_portfolio_gain = round(current_portfolio_value - total_invested_amount, 2)
     
@@ -263,8 +136,6 @@ def index(request):
         'total_free_amount': total_free_amount,
         'total_invested_amount': total_invested_amount,
         'stock_data_json': json.dumps(stock_data),
-        'performance_labels_json': json.dumps(performance_labels),
-        'performance_datasets_json': json.dumps(performance_datasets),
         'cache_status': cache_status,
     })
 
@@ -273,6 +144,7 @@ def broker_list(request):
     brokers = Broker.objects.filter(user=request.user)
     total_amount = sum(broker.total_amount for broker in brokers)
     free_amount = sum(broker.free_amount for broker in brokers)
+    total_count = brokers.count()
     paginator = Paginator(brokers, 10)  # 10 per page
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
@@ -281,6 +153,7 @@ def broker_list(request):
         'brokers': brokers,  # for summary if needed
         'total_amount': total_amount,
         'free_amount': free_amount,
+        'total_count': total_count,
     })
 
 @login_required
@@ -300,18 +173,28 @@ def stock_list(request):
             )
         )
     ).filter(quantity__gt=0).order_by('name')
+    total_count = stocks.count()
     paginator = Paginator(stocks, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-    return render(request, 'stocks.html', {'page_obj': page_obj, 'stocks': stocks})
+    return render(request, 'stocks.html', {
+        'page_obj': page_obj, 
+        'stocks': stocks,
+        'total_count': total_count
+    })
 
 @login_required
 def transaction_list(request):
     transactions = Transaction.objects.filter(user=request.user).order_by('-date')
+    total_count = transactions.count()
     paginator = Paginator(transactions, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-    return render(request, 'transactions.html', {'page_obj': page_obj, 'transactions': transactions})
+    return render(request, 'transactions.html', {
+        'page_obj': page_obj, 
+        'transactions': transactions,
+        'total_count': total_count
+    })
 
 
 @login_required
@@ -514,7 +397,7 @@ def earnings_history(request):
 @login_required
 def stock_transaction_history(request, pk):
     stock = get_object_or_404(Stock, pk=pk, user=request.user)
-    transactions = stock.transactions.all()
+    transactions = stock.transactions.all().order_by('-date')
     from django.core.paginator import Paginator
     paginator = Paginator(transactions, 10)
     page_number = request.GET.get('page')
@@ -541,10 +424,15 @@ def dividend_list(request):
         dividends = dividends.order_by('-amount')
     elif filter_param == 'impact':
         dividends = dividends.filter(impact_average=True)
+    total_count = dividends.count()
     paginator = Paginator(dividends, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-    return render(request, 'dividends.html', {'page_obj': page_obj, 'dividends': dividends})
+    return render(request, 'dividends.html', {
+        'page_obj': page_obj, 
+        'dividends': dividends,
+        'total_count': total_count
+    })
 
 @login_required
 def add_dividend(request):
@@ -611,6 +499,7 @@ def monthly_deposit_list(request):
     paginator = Paginator(deposits, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
+    total_count = deposits.count()
     return render(request, 'monthly-deposits.html', {
         'page_obj': page_obj,
         'deposits': deposits,
@@ -619,6 +508,7 @@ def monthly_deposit_list(request):
         'average_monthly': average_monthly,
         'monthly_summary': monthly_summary,
         'broker_summary': broker_summary,
+        'total_count': total_count,
     })
 
 @login_required
@@ -734,6 +624,7 @@ def portfolio_snapshots(request):
     paginator = Paginator(snapshots, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
+    total_count = snapshots.count()
     return render(request, 'portfolio-snapshots.html', {
         'page_obj': page_obj,
         'snapshots': snapshots,
@@ -744,6 +635,7 @@ def portfolio_snapshots(request):
         'avg_profit_loss': avg_profit_loss,
         'avg_profit_percentage': avg_profit_percentage,
         'monthly_growth': monthly_growth,
+        'total_count': total_count,
     })
 
 @login_required

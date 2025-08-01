@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 {% load humanize %}
 
 {% block content %}
@@ -109,6 +109,18 @@
     </div>
 </div>
 
+<!-- View All Section -->
+<div class="d-flex justify-content-between align-items-center mt-3">
+    <div class="text-muted">
+        <small>Showing {{ earnings|length }} earnings records</small>
+    </div>
+    <div>
+        <a href="{% url 'earnings_history' %}" class="btn btn-outline-info btn-sm">
+            <i class="bi bi-list-ul"></i> View All Earnings
+        </a>
+    </div>
+</div>
+
 <style>
     .earnings-table {
         --profit-color: #28a745;
@@ -138,4 +150,4 @@
         font-size: 0.875rem;
     }
 </style>
-{% endblock %}
+{% endblock content %}
