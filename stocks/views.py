@@ -145,15 +145,24 @@ def broker_list(request):
     total_amount = sum(broker.total_amount for broker in brokers)
     free_amount = sum(broker.free_amount for broker in brokers)
     total_count = brokers.count()
-    paginator = Paginator(brokers, 10)  # 10 per page
+    
+    # Check if user wants to view all items
+    view_all = request.GET.get('view_all') == 'true'
+    
+    # Use total_count as page_size when view_all is true, otherwise use 10
+    page_size = total_count if view_all else 10
+    
+    paginator = Paginator(brokers, page_size)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
+    
     return render(request, 'brokers.html', {
         'page_obj': page_obj,
         'brokers': brokers,  # for summary if needed
         'total_amount': total_amount,
         'free_amount': free_amount,
         'total_count': total_count,
+        'view_all': view_all,
     })
 
 @login_required
@@ -174,26 +183,44 @@ def stock_list(request):
         )
     ).filter(quantity__gt=0).order_by('name')
     total_count = stocks.count()
-    paginator = Paginator(stocks, 10)
+    
+    # Check if user wants to view all items
+    view_all = request.GET.get('view_all') == 'true'
+    
+    # Use total_count as page_size when view_all is true, otherwise use 10
+    page_size = total_count if view_all else 10
+    
+    paginator = Paginator(stocks, page_size)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
+    
     return render(request, 'stocks.html', {
         'page_obj': page_obj, 
         'stocks': stocks,
-        'total_count': total_count
+        'total_count': total_count,
+        'view_all': view_all,
     })
 
 @login_required
 def transaction_list(request):
     transactions = Transaction.objects.filter(user=request.user).order_by('-date')
     total_count = transactions.count()
-    paginator = Paginator(transactions, 10)
+    
+    # Check if user wants to view all items
+    view_all = request.GET.get('view_all') == 'true'
+    
+    # Use total_count as page_size when view_all is true, otherwise use 10
+    page_size = total_count if view_all else 10
+    
+    paginator = Paginator(transactions, page_size)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
+    
     return render(request, 'transactions.html', {
         'page_obj': page_obj, 
         'transactions': transactions,
-        'total_count': total_count
+        'total_count': total_count,
+        'view_all': view_all,
     })
 
 
@@ -425,13 +452,22 @@ def dividend_list(request):
     elif filter_param == 'impact':
         dividends = dividends.filter(impact_average=True)
     total_count = dividends.count()
-    paginator = Paginator(dividends, 10)
+    
+    # Check if user wants to view all items
+    view_all = request.GET.get('view_all') == 'true'
+    
+    # Use total_count as page_size when view_all is true, otherwise use 10
+    page_size = total_count if view_all else 10
+    
+    paginator = Paginator(dividends, page_size)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
+    
     return render(request, 'dividends.html', {
         'page_obj': page_obj, 
         'dividends': dividends,
-        'total_count': total_count
+        'total_count': total_count,
+        'view_all': view_all,
     })
 
 @login_required
@@ -500,6 +536,16 @@ def monthly_deposit_list(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     total_count = deposits.count()
+    
+    # Check if user wants to view all items
+    view_all = request.GET.get('view_all') == 'true'
+    
+    # Use total_count as page_size when view_all is true, otherwise use 10
+    page_size = total_count if view_all else 10
+    
+    paginator = Paginator(deposits, page_size)
+    page_obj = paginator.get_page(page_number)
+    
     return render(request, 'monthly-deposits.html', {
         'page_obj': page_obj,
         'deposits': deposits,
@@ -509,6 +555,7 @@ def monthly_deposit_list(request):
         'monthly_summary': monthly_summary,
         'broker_summary': broker_summary,
         'total_count': total_count,
+        'view_all': view_all,
     })
 
 @login_required
@@ -625,6 +672,16 @@ def portfolio_snapshots(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     total_count = snapshots.count()
+    
+    # Check if user wants to view all items
+    view_all = request.GET.get('view_all') == 'true'
+    
+    # Use total_count as page_size when view_all is true, otherwise use 10
+    page_size = total_count if view_all else 10
+    
+    paginator = Paginator(snapshots, page_size)
+    page_obj = paginator.get_page(page_number)
+    
     return render(request, 'portfolio-snapshots.html', {
         'page_obj': page_obj,
         'snapshots': snapshots,
@@ -636,6 +693,7 @@ def portfolio_snapshots(request):
         'avg_profit_percentage': avg_profit_percentage,
         'monthly_growth': monthly_growth,
         'total_count': total_count,
+        'view_all': view_all,
     })
 
 @login_required

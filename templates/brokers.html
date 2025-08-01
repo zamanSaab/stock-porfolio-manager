@@ -86,6 +86,7 @@
     </div>
     
     <!-- Pagination -->
+    {% if not view_all and page_obj.paginator.num_pages > 1 %}
     <nav aria-label="Page navigation">
         <ul class="pagination justify-content-center mt-4">
             {% if page_obj.has_previous %}
@@ -133,17 +134,28 @@
             {% endif %}
         </ul>
     </nav>
+    {% endif %}
     
     <!-- View All Section -->
     <div class="d-flex justify-content-between align-items-center mt-3">
         <div class="text-muted">
-            <small>Showing {{ page_obj.start_index }}-{{ page_obj.end_index }} of {{ total_count }} brokers</small>
+            {% if view_all %}
+                <small>Showing all {{ total_count }} brokers</small>
+            {% else %}
+                <small>Showing {{ page_obj.start_index }}-{{ page_obj.end_index }} of {{ total_count }} brokers</small>
+            {% endif %}
         </div>
         {% if total_count > 10 %}
         <div>
-            <a href="{% url 'broker_list' %}" class="btn btn-outline-info btn-sm">
-                <i class="bi bi-list-ul"></i> View All {{ total_count }} Brokers
-            </a>
+            {% if view_all %}
+                <a href="{% url 'broker_list' %}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-list-ul"></i> Show Paginated View
+                </a>
+            {% else %}
+                <a href="{% url 'broker_list' %}?view_all=true" class="btn btn-outline-info btn-sm">
+                    <i class="bi bi-list-ul"></i> View All {{ total_count }} Brokers
+                </a>
+            {% endif %}
         </div>
         {% endif %}
     </div>
