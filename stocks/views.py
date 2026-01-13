@@ -3,14 +3,20 @@ from django.http import HttpResponse, JsonResponse
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
-from .models import Broker, Stock, Transaction, Dividend
-from .forms import BrokerForm, TransactionForm, StockForm, DividendForm, CustomSignupForm
-from .utils import fetch_market_watch_data
+from .models import Broker, Stock, Transaction, Dividend, MonthlyDeposit, MonthlyPortfolioSnapshot
+from .forms import BrokerForm, TransactionForm, StockForm, DividendForm, CustomSignupForm, MonthlyDepositForm
+from .utils import fetch_market_watch_data, get_last_closing_price_for_month
 from django.db.models import Sum, Case, When, IntegerField, Avg, Q, F, FloatField, ExpressionWrapper
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 from django.urls import reverse_lazy
 import json
+from datetime import datetime, timedelta
+from django.db.models.functions import TruncMonth
+from dateutil.relativedelta import relativedelta
+from django.core.paginator import Paginator
+from django.views.decorators.http import require_POST
+from django.http import JsonResponse
 
 @login_required
 def index(request):
@@ -36,60 +42,101 @@ def index(request):
     sector_data_json = []
     current_price = 200
 
+    # Get all stock symbols for market data fetch
+    stock_symbols = [stock.symbol for stock in stocks]
+    
+    # Fetch current market prices
+    market_data = None
+    if stock_symbols:
+        try:
+            market_data = fetch_market_watch_data(stock_symbols)
+            if market_data is not None:
+                market_data = market_data.set_index('SYMBOL')['CURRENT'].to_dict()
+        except Exception as e:
+            print(f"Error fetching market data: {e}")
+            market_data = {}
+    
     for stock in stocks:
-        avg_price = stock.total_price / stock.total_quantity if stock.total_quantity > 0 else 0
-        value = avg_price * stock.total_quantity
+        # Use current market price if available, otherwise use average price
+        if market_data and stock.symbol in market_data:
+            try:
+                current_price = float(market_data[stock.symbol].replace(',', ''))
+            except (ValueError, AttributeError):
+                current_price = float(stock.avg_price)
+        else:
+            current_price = float(stock.avg_price)
+        
+        value = current_price * stock.total_quantity
         total_value += value
+        
+        # Calculate profit/loss for this stock
+        avg_price = stock.avg_price
+        # Convert both to float for calculation
+        current_price_float = float(current_price)
+        avg_price_float = float(avg_price) if avg_price and avg_price > 0 else 0.0
+        stock_profit_loss = (current_price_float - avg_price_float) * stock.total_quantity if stock.total_quantity > 0 else 0
+        
         stock_data.append({
             'name': stock.name,
             'symbol': stock.symbol,
             'value': int(value),
             'quantity': stock.quantity,  # Add quantity for template
+            'current_price': float(current_price),
+            'avg_price': float(avg_price) if avg_price else 0.0,
+            'profit_loss': float(stock_profit_loss),
             "exploded": True,
-            # 'change': current_price - avg_price
         })
     for data in stock_data:
-        data['y'] = int((data['value']  / total_value)*100) if total_value > 0 else 0
+        data['y'] = float(round((data['value']  / total_value)*100, 2)) if total_value > 0 else 0
 
-    top_holdings = sorted(stock_data, key=lambda x: x['value'], reverse=True)[:5]
+    top_holdings = sorted(stock_data, key=lambda x: x['value'], reverse=True)[:3]
 
-    # Example dynamic portfolio performance data (replace with real calculations as needed)
-    performance_labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-    performance_datasets = [
-        {
-            "label": "My Portfolio",
-            "data": [100, 105, 112, 108, 118, 125],
-            "borderColor": "#4e73df",
-            "backgroundColor": "rgba(78, 115, 223, 0.1)",
-            "borderWidth": 2,
-            "tension": 0.4,
-            "fill": True
-        },
-        {
-            "label": "NIFTY 50",
-            "data": [100, 102, 104, 101, 107, 110],
-            "borderColor": "#858796",
-            "backgroundColor": "rgba(133, 135, 150, 0.1)",
-            "borderWidth": 2,
-            "borderDash": [5, 5],
-            "tension": 0.4,
-            "fill": True
-        }
-    ]
-    performance_labels_json = json.dumps(performance_labels)
-    performance_datasets_json = json.dumps(performance_datasets)
+    # Calculate actual portfolio metrics (moved up)
+    brokers = Broker.objects.filter(user=request.user)
+    total_free_amount = round(sum(float(broker.free_amount) for broker in brokers), 2)
+    total_value_float = float(total_value)
+    total_free_amount_float = float(total_free_amount)
+    current_portfolio_value = round(total_value_float + total_free_amount_float, 2)
+    total_invested_amount = MonthlyDeposit.objects.filter(user=request.user).aggregate(
+        total=Sum('amount')
+    )['total'] or 0
+    total_invested_amount = round(float(total_invested_amount), 2)
+
+    # Calculate current profit/loss
+    current_portfolio_gain = round(current_portfolio_value - total_invested_amount, 2)
+    
+    # Calculate gain percentage
+    gain_percent = 0
+    if total_invested_amount > 0:
+        gain_percent = round((current_portfolio_gain / total_invested_amount) * 100, 2)
+    
+    # Calculate total dividends received
+    total_dividends = Dividend.objects.filter(user=request.user).aggregate(
+        total=Sum('amount')
+    )['total'] or 0
+    total_dividends = round(float(total_dividends), 2)
+    
+    # Get latest snapshot for comparison
+    latest_snapshot = MonthlyPortfolioSnapshot.objects.filter(user=request.user).order_by('-snapshot_date').first()
+    
+    # Calculate total gain (current value + dividends - invested)
+    total_gain = round(current_portfolio_gain + total_dividends, 2)
+    
+    # Get cache status for display
+    from .utils import get_cache_status
+    cache_status = get_cache_status()
 
     return render(request, 'index.html', {
         'top_holdings': top_holdings,
-        'total_gain': 12840,
-        'gain_percent': 18.1,
-        'current_portfolio_gain': -1900,
-        'current_portfolio': 947000,
-        'dividend': 42300,
-        'total_free_amount': sum(broker.free_amount for broker in Broker.objects.filter(user=request.user)),
+        'total_gain': total_gain,
+        'gain_percent': gain_percent,
+        'current_portfolio_gain': current_portfolio_gain,
+        'current_portfolio': current_portfolio_value,
+        'dividend': total_dividends,
+        'total_free_amount': total_free_amount,
+        'total_invested_amount': total_invested_amount,
         'stock_data_json': json.dumps(stock_data),
-        'performance_labels_json': performance_labels_json,
-        'performance_datasets_json': performance_datasets_json,
+        'cache_status': cache_status,
     })
 
 @login_required
@@ -97,10 +144,25 @@ def broker_list(request):
     brokers = Broker.objects.filter(user=request.user)
     total_amount = sum(broker.total_amount for broker in brokers)
     free_amount = sum(broker.free_amount for broker in brokers)
+    total_count = brokers.count()
+    
+    # Check if user wants to view all items
+    view_all = request.GET.get('view_all') == 'true'
+    
+    # Use total_count as page_size when view_all is true, otherwise use 10
+    page_size = total_count if view_all else 10
+    
+    paginator = Paginator(brokers, page_size)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
     return render(request, 'brokers.html', {
-        'brokers': brokers,
+        'page_obj': page_obj,
+        'brokers': brokers,  # for summary if needed
         'total_amount': total_amount,
         'free_amount': free_amount,
+        'total_count': total_count,
+        'view_all': view_all,
     })
 
 @login_required
@@ -119,13 +181,47 @@ def stock_list(request):
                 output_field=IntegerField()
             )
         )
-    ).filter(quantity__gt=0).order_by('-name')
-    return render(request, 'stocks.html', {'stocks': stocks})
+    ).filter(quantity__gt=0).order_by('name')
+    total_count = stocks.count()
+    
+    # Check if user wants to view all items
+    view_all = request.GET.get('view_all') == 'true'
+    
+    # Use total_count as page_size when view_all is true, otherwise use 10
+    page_size = total_count if view_all else 10
+    
+    paginator = Paginator(stocks, page_size)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    return render(request, 'stocks.html', {
+        'page_obj': page_obj, 
+        'stocks': stocks,
+        'total_count': total_count,
+        'view_all': view_all,
+    })
 
 @login_required
 def transaction_list(request):
-    transactions = Transaction.objects.filter(user=request.user)
-    return render(request, 'transactions.html', {'transactions': transactions})
+    transactions = Transaction.objects.filter(user=request.user).order_by('-date')
+    total_count = transactions.count()
+    
+    # Check if user wants to view all items
+    view_all = request.GET.get('view_all') == 'true'
+    
+    # Use total_count as page_size when view_all is true, otherwise use 10
+    page_size = total_count if view_all else 10
+    
+    paginator = Paginator(transactions, page_size)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    return render(request, 'transactions.html', {
+        'page_obj': page_obj, 
+        'transactions': transactions,
+        'total_count': total_count,
+        'view_all': view_all,
+    })
 
 
 @login_required
@@ -328,8 +424,12 @@ def earnings_history(request):
 @login_required
 def stock_transaction_history(request, pk):
     stock = get_object_or_404(Stock, pk=pk, user=request.user)
-    transactions = stock.transactions.all()
-    return render(request, 'stock-transaction-history.html', {'transactions': transactions})
+    transactions = stock.transactions.all().order_by('-date')
+    from django.core.paginator import Paginator
+    paginator = Paginator(transactions, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    return render(request, 'stock-transaction-history.html', {'page_obj': page_obj, 'transactions': transactions})
 
 def signup(request):
     if request.method == 'POST':
@@ -351,7 +451,24 @@ def dividend_list(request):
         dividends = dividends.order_by('-amount')
     elif filter_param == 'impact':
         dividends = dividends.filter(impact_average=True)
-    return render(request, 'dividends.html', {'dividends': dividends})
+    total_count = dividends.count()
+    
+    # Check if user wants to view all items
+    view_all = request.GET.get('view_all') == 'true'
+    
+    # Use total_count as page_size when view_all is true, otherwise use 10
+    page_size = total_count if view_all else 10
+    
+    paginator = Paginator(dividends, page_size)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    return render(request, 'dividends.html', {
+        'page_obj': page_obj, 
+        'dividends': dividends,
+        'total_count': total_count,
+        'view_all': view_all,
+    })
 
 @login_required
 def add_dividend(request):
@@ -383,5 +500,420 @@ def delete_dividend(request, pk):
     dividend = get_object_or_404(Dividend, pk=pk, user=request.user)
     if request.method == 'POST':
         dividend.delete()
+        messages.success(request, 'Dividend deleted successfully!')
         return redirect('dividend_list')
     return render(request, 'del-dividend.html', {'dividend': dividend})
+
+# Monthly Deposit Views
+@login_required
+def monthly_deposit_list(request):
+    deposits = MonthlyDeposit.objects.filter(user=request.user).order_by('-deposit_date')
+    
+    # Calculate summary statistics
+    total_deposits = deposits.aggregate(total=Sum('amount'))['total'] or 0
+    current_year = datetime.now().year
+    current_year_deposits = deposits.filter(deposit_date__year=current_year).aggregate(total=Sum('amount'))['total'] or 0
+    
+    # Calculate average monthly deposit
+    deposit_count = deposits.count()
+    average_monthly = total_deposits / deposit_count if deposit_count > 0 else 0
+    
+    # Monthly summary for current year
+    monthly_summary = deposits.filter(deposit_date__year=current_year).annotate(
+        month=TruncMonth('deposit_date')
+    ).values('month').annotate(
+        total_amount=Sum('amount'),
+        deposit_count=Sum(1)
+    ).order_by('month')
+    
+    # Broker-wise summary
+    broker_summary = deposits.values('broker__name').annotate(
+        total_amount=Sum('amount'),
+        deposit_count=Sum(1)
+    ).order_by('-total_amount')
+    
+    paginator = Paginator(deposits, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    total_count = deposits.count()
+    
+    # Check if user wants to view all items
+    view_all = request.GET.get('view_all') == 'true'
+    
+    # Use total_count as page_size when view_all is true, otherwise use 10
+    page_size = total_count if view_all else 10
+    
+    paginator = Paginator(deposits, page_size)
+    page_obj = paginator.get_page(page_number)
+    
+    return render(request, 'monthly-deposits.html', {
+        'page_obj': page_obj,
+        'deposits': deposits,
+        'total_deposits': total_deposits,
+        'current_year_deposits': current_year_deposits,
+        'average_monthly': average_monthly,
+        'monthly_summary': monthly_summary,
+        'broker_summary': broker_summary,
+        'total_count': total_count,
+        'view_all': view_all,
+    })
+
+@login_required
+def add_monthly_deposit(request):
+    if request.method == 'POST':
+        form = MonthlyDepositForm(request.POST, user=request.user)
+        if form.is_valid():
+            deposit = form.save(commit=False)
+            deposit.user = request.user
+            deposit.save()
+            messages.success(request, 'Monthly deposit added successfully!')
+            return redirect('monthly_deposit_list')
+    else:
+        form = MonthlyDepositForm(user=request.user)
+    
+    return render(request, 'monthly-deposit-form.html', {'form': form, 'title': 'Add Monthly Deposit'})
+
+@login_required
+def edit_monthly_deposit(request, pk):
+    deposit = get_object_or_404(MonthlyDeposit, pk=pk, user=request.user)
+    if request.method == 'POST':
+        form = MonthlyDepositForm(request.POST, instance=deposit, user=request.user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Monthly deposit updated successfully!')
+            return redirect('monthly_deposit_list')
+    else:
+        form = MonthlyDepositForm(instance=deposit, user=request.user)
+    
+    return render(request, 'monthly-deposit-form.html', {'form': form, 'title': 'Edit Monthly Deposit', 'deposit': deposit})
+
+@login_required
+def delete_monthly_deposit(request, pk):
+    deposit = get_object_or_404(MonthlyDeposit, pk=pk, user=request.user)
+    
+    # Calculate amounts after deletion
+    free_amount_after_deletion = deposit.broker.free_amount - deposit.amount
+    total_amount_after_deletion = deposit.broker.total_amount - deposit.amount
+    
+    if request.method == 'POST':
+        deposit.delete()
+        messages.success(request, 'Monthly deposit deleted successfully!')
+        return redirect('monthly_deposit_list')
+    return render(request, 'del-monthly-deposit.html', {
+        'deposit': deposit,
+        'free_amount_after_deletion': free_amount_after_deletion,
+        'total_amount_after_deletion': total_amount_after_deletion,
+    })
+
+@login_required
+def monthly_deposit_chart_data(request):
+    """API endpoint for chart data"""
+    deposits = MonthlyDeposit.objects.filter(user=request.user)
+    
+    # Monthly data for the last 12 months
+    end_date = datetime.now()
+    start_date = end_date - timedelta(days=365)
+    
+    monthly_data = deposits.filter(
+        deposit_date__range=[start_date, end_date]
+    ).annotate(
+        month=TruncMonth('deposit_date')
+    ).values('month').annotate(
+        total_amount=Sum('amount')
+    ).order_by('month')
+    
+    # Prepare chart data
+    labels = []
+    data = []
+    
+    current_date = start_date.replace(day=1)
+    while current_date <= end_date:
+        month_key = current_date.strftime('%Y-%m-01')
+        labels.append(current_date.strftime('%b %Y'))
+        
+        # Find data for this month
+        month_data = next((item for item in monthly_data if item['month'].strftime('%Y-%m-01') == month_key), None)
+        data.append(float(month_data['total_amount']) if month_data else 0)
+        
+        # Move to next month
+        if current_date.month == 12:
+            current_date = current_date.replace(year=current_date.year + 1, month=1)
+        else:
+            current_date = current_date.replace(month=current_date.month + 1)
+    
+    return JsonResponse({
+        'labels': labels,
+        'data': data,
+    })
+
+# Portfolio Snapshot Views
+@login_required
+def portfolio_snapshots(request):
+    """View for listing portfolio snapshots"""
+    snapshots = MonthlyPortfolioSnapshot.objects.filter(user=request.user).order_by('-snapshot_date')
+    
+    # Get latest snapshot for summary
+    latest_snapshot = snapshots.first()
+    
+    # Calculate summary statistics
+    total_snapshots = snapshots.count()
+    if total_snapshots > 0:
+        total_invested = snapshots.aggregate(total=Sum('total_invested_amount'))['total'] or 0
+        total_portfolio_value = snapshots.aggregate(total=Sum('total_portfolio_value'))['total'] or 0
+        avg_profit_loss = snapshots.aggregate(avg=Avg('total_profit_loss'))['avg'] or 0
+        avg_profit_percentage = snapshots.aggregate(avg=Avg('profit_loss_percentage'))['avg'] or 0
+    else:
+        total_invested = total_portfolio_value = avg_profit_loss = avg_profit_percentage = 0
+    
+    # Get monthly growth data for charts
+    monthly_growth = snapshots[:12]  # Last 12 months
+    
+    paginator = Paginator(snapshots, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    total_count = snapshots.count()
+    
+    # Check if user wants to view all items
+    view_all = request.GET.get('view_all') == 'true'
+    
+    # Use total_count as page_size when view_all is true, otherwise use 10
+    page_size = total_count if view_all else 10
+    
+    paginator = Paginator(snapshots, page_size)
+    page_obj = paginator.get_page(page_number)
+    
+    return render(request, 'portfolio-snapshots.html', {
+        'page_obj': page_obj,
+        'snapshots': snapshots,
+        'latest_snapshot': latest_snapshot,
+        'total_snapshots': total_snapshots,
+        'total_invested': total_invested,
+        'total_portfolio_value': total_portfolio_value,
+        'avg_profit_loss': avg_profit_loss,
+        'avg_profit_percentage': avg_profit_percentage,
+        'monthly_growth': monthly_growth,
+        'total_count': total_count,
+        'view_all': view_all,
+    })
+
+@login_required
+def generate_snapshot(request):
+    """Manually generate a portfolio snapshot"""
+    if request.method == 'POST':
+        try:
+            # Get the target date (default to today)
+            target_date_str = request.POST.get('snapshot_date')
+            if target_date_str:
+                target_date = datetime.strptime(target_date_str, '%Y-%m-%d').date()
+            else:
+                target_date = datetime.now().date()
+            
+            # Create the snapshot
+            snapshot = MonthlyPortfolioSnapshot.create_monthly_snapshot(request.user, target_date)
+            
+            messages.success(
+                request, 
+                f'Portfolio snapshot created for {snapshot.snapshot_date.strftime("%B %d, %Y")}. '
+                f'Portfolio Value: Rs. {snapshot.total_portfolio_value:,.0f}, '
+                f'Invested: Rs. {snapshot.total_invested_amount:,.0f}, '
+                f'P&L: Rs. {snapshot.total_profit_loss:,.0f} ({snapshot.profit_loss_percentage:+.1f}%)'
+            )
+            
+            return redirect('portfolio_snapshots')
+            
+        except Exception as e:
+            messages.error(request, f'Error generating snapshot: {str(e)}')
+    
+    return render(request, 'generate-snapshot.html', {
+        'today_date': datetime.now().date()
+    })
+
+@login_required
+def snapshot_detail(request, pk):
+    """View detailed information about a specific snapshot"""
+    snapshot = get_object_or_404(MonthlyPortfolioSnapshot, pk=pk, user=request.user)
+    
+    # Get stocks data for this snapshot date
+    stocks = Stock.objects.filter(user=request.user, is_active=True)
+    stock_details = []
+    
+    for stock in stocks:
+        if stock.total_quantity > 0:
+            stock_value = stock.total_quantity * stock.avg_price
+            stock_details.append({
+                'name': stock.name,
+                'symbol': stock.symbol,
+                'quantity': stock.total_quantity,
+                'avg_price': stock.avg_price,
+                'current_value': stock_value,
+                'percentage': (stock_value / snapshot.total_portfolio_value * 100) if snapshot.total_portfolio_value > 0 else 0
+            })
+    
+    # Sort by value (highest first)
+    stock_details.sort(key=lambda x: x['current_value'], reverse=True)
+    
+    return render(request, 'snapshot-detail.html', {
+        'snapshot': snapshot,
+        'stock_details': stock_details,
+    })
+
+@login_required
+def delete_snapshot(request, pk):
+    """Delete a portfolio snapshot"""
+    snapshot = get_object_or_404(MonthlyPortfolioSnapshot, pk=pk, user=request.user)
+    
+    if request.method == 'POST':
+        snapshot.delete()
+        messages.success(request, 'Portfolio snapshot deleted successfully!')
+        return redirect('portfolio_snapshots')
+    
+    return render(request, 'del-snapshot.html', {'snapshot': snapshot})
+
+@login_required
+def refresh_market_cache(request):
+    """Refresh market data cache manually"""
+    from .utils import fetch_market_watch_data, get_cache_status
+    
+    try:
+        # Fetch fresh data (this will automatically cache it)
+        df = fetch_market_watch_data(use_cache=False)
+        
+        if df is not None and not df.empty:
+            cache_status = get_cache_status()
+            return JsonResponse({
+                'success': True,
+                'message': f'Cache refreshed successfully! Fetched {len(df)} data points.',
+                'cache_status': cache_status
+            })
+        else:
+            return JsonResponse({
+                'success': False,
+                'message': 'Failed to refresh cache - API error'
+            })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Error refreshing cache: {str(e)}'
+        })
+
+
+@login_required
+def portfolio_growth_chart_data(request):
+    """API endpoint for portfolio growth chart data"""
+    snapshots = MonthlyPortfolioSnapshot.objects.filter(user=request.user).order_by('snapshot_date')
+    
+    # Prepare chart data
+    labels = []
+    invested_data = []
+    portfolio_data = []
+    profit_loss_data = []
+    
+    for snapshot in snapshots:
+        labels.append(snapshot.snapshot_date.strftime('%b %Y'))
+        invested_data.append(float(snapshot.total_invested_amount))
+        portfolio_data.append(float(snapshot.total_portfolio_value))
+        profit_loss_data.append(float(snapshot.total_profit_loss))
+    
+    return JsonResponse({
+        'labels': labels,
+        'invested_data': invested_data,
+        'portfolio_data': portfolio_data,
+        'profit_loss_data': profit_loss_data,
+    })
+
+@login_required
+@require_POST
+def generate_snapshot_eod(request):
+    """
+    Generate a MonthlyPortfolioSnapshot for the current user for a given month using EOD API closing prices.
+    Accepts POST with 'month' and 'year'. Defaults to last month if not provided.
+    Returns JsonResponse with snapshot info.
+    """
+    import calendar
+    from .models import Stock, MonthlyDeposit, Broker, MonthlyPortfolioSnapshot
+    from django.db.models import Sum
+    from datetime import datetime
+    from dateutil.relativedelta import relativedelta
+    
+
+    # Get month/year from POST or default to last month
+    month = int(request.POST.get('month', 0))
+    year = int(request.POST.get('year', 0))
+    if not month or not year:
+        today = datetime.now().date()
+        last_month = today - relativedelta(months=1)
+        year = last_month.year
+        month = last_month.month
+    # Last day of the month
+    last_day = calendar.monthrange(year, month)[1]
+    snapshot_date = datetime(year, month, last_day).date()
+
+    user = request.user
+
+    # Get all stocks held as of that date
+    stocks = Stock.objects.filter(user=user)
+    stock_values = []
+    total_portfolio_value = 0
+
+    # import pdb; pdb.set_trace()
+    for stock in stocks:
+        # Calculate quantity as of snapshot_date
+        buy_qty = stock.transactions.filter(transaction_type='buy', date__lte=snapshot_date).aggregate(total=Sum('quantity'))['total'] or 0
+        sell_qty = stock.transactions.filter(transaction_type='sell', date__lte=snapshot_date).aggregate(total=Sum('quantity'))['total'] or 0
+        quantity = buy_qty - sell_qty
+        if quantity > 0:
+            close_price = get_last_closing_price_for_month(stock.symbol, year, month)
+            if close_price is None:
+                close_price = stock.avg_price  # fallback
+            value = quantity * float(close_price)
+            total_portfolio_value += value
+            stock_values.append({'symbol': stock.symbol, 'quantity': quantity, 'close_price': close_price, 'value': value})
+
+    # Sum all deposits up to snapshot_date
+    total_deposits = MonthlyDeposit.objects.filter(user=user, deposit_date__lte=snapshot_date).aggregate(total=Sum('amount'))['total'] or 0
+
+    # Total spent on buys up to snapshot_date
+    total_buys = Transaction.objects.filter(
+        user=user,
+        transaction_type='buy',
+        date__lte=snapshot_date
+    ).aggregate(total=Sum(F('quantity') * F('price')))['total'] or 0
+
+    # Total received from sells up to snapshot_date
+    total_sells = Transaction.objects.filter(
+        user=user,
+        transaction_type='sell',
+        date__lte=snapshot_date
+    ).aggregate(total=Sum(F('quantity') * F('price')))['total'] or 0
+
+    total_free_amount = float(total_deposits) - float(total_buys) + float(total_sells)
+
+    total_invested = MonthlyDeposit.objects.filter(user=user, deposit_date__lte=snapshot_date).aggregate(total=Sum('amount'))['total'] or 0
+
+    total_portfolio_value += total_free_amount
+    total_profit_loss = total_portfolio_value - float(total_invested)
+    profit_loss_percentage = (total_profit_loss / float(total_invested) * 100) if total_invested else 0
+
+    # Create or update snapshot
+    snapshot, created = MonthlyPortfolioSnapshot.objects.update_or_create(
+        user=user,
+        snapshot_date=snapshot_date,
+        defaults={
+            'total_invested_amount': total_invested,
+            'total_portfolio_value': total_portfolio_value,
+            'total_free_amount': total_free_amount,
+            'total_profit_loss': total_profit_loss,
+            'profit_loss_percentage': profit_loss_percentage,
+        }
+    )
+
+    return JsonResponse({
+        'success': True,
+        'created': created,
+        'snapshot_date': snapshot_date.strftime('%Y-%m-%d'),
+        'portfolio_value': total_portfolio_value,
+        'invested': total_invested,
+        'profit_loss': total_profit_loss,
+        'profit_loss_percentage': profit_loss_percentage,
+        'stock_values': stock_values,
+    })

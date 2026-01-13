@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 {% load crispy_forms_tags %}
 
 {% block content %}
@@ -21,7 +21,7 @@
             <div class="col-md-6 mb-3">
                 <div class="stock-select-wrapper">
                     {{ form.stock|as_crispy_field }}
-                    <button type="button" class="btn btn-sm btn-outline-secondary add-stock-btn" data-bs-toggle="modal" data-bs-target="#addStockModal">
+                    <button type="button" class="btn btn-sm  add-stock-btn" data-bs-toggle="modal" data-bs-target="#addStockModal">
                         <i class="bi bi-plus-lg me-1"></i> Add New Stock
                     </button>
                 </div>
@@ -39,6 +39,65 @@
             </div>
             <div class="col-md-4 mb-3">
                 {{ form.transaction_type|as_crispy_field }}
+            </div>
+        </div>
+        <div class="row align-items-center mb-3">
+            <div class="col-md-4" id="manual_date_container">
+                {{ form.date|as_crispy_field }}
+            </div>
+        </div>
+
+        <hr class="my-4">
+
+        <div class="accordion mb-3" id="chargesAccordion">
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="headingCharges">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCharges" aria-expanded="false" aria-controls="collapseCharges">
+                        <i class="bi bi-gear me-2"></i> Override Calculated Charges (Optional)
+                    </button>
+                </h2>
+                <div id="collapseCharges" class="accordion-collapse collapse" aria-labelledby="headingCharges" data-bs-parent="#chargesAccordion">
+                    <div class="accordion-body">
+                        <p class="text-muted small mb-3">
+                            The system automatically calculates charges based on the default rates shown below in the "Suggested Charges" box. You can manually override those values here if necessary.
+                        </p>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                {{ form.commission|as_crispy_field }}
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                {{ form.sales_tax|as_crispy_field }}
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                {{ form.cdc_charges|as_crispy_field }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Helper section for suggested charges -->
+        <div class="row">
+            <div class="col-12">
+                <div class="alert alert-info charges-helper">
+                    <h6><i class="bi bi-info-circle me-2"></i>Suggested Charges (based on current price & quantity):</h6>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <strong>Commission:</strong> <span id="suggestedCommission">Rs. 0.00</span>
+                        </div>
+                        <div class="col-md-4">
+                            <strong>Sales Tax:</strong> <span id="suggestedSalesTax">Rs. 0.00</span>
+                        </div>
+                        <div class="col-md-4">
+                            <strong>CDC Charges:</strong> <span id="suggestedCdcCharges">Rs. 0.00</span>
+                        </div>
+                    </div>
+                    <small class="text-muted mt-2 d-block">
+                        <i class="bi bi-lightbulb me-1"></i>
+                        These are suggestions based on default rates. You can override them in the fields above.
+                    </small>
+                </div>
             </div>
         </div>
         <div class="d-grid gap-2 d-md-flex justify-content-md-end">
@@ -150,6 +209,51 @@
         document.getElementById('addStockModal').addEventListener('show.bs.modal', function() {
             document.getElementById('addStockError').classList.add('d-none');
         });
+
+        // Live calculation for commission, sales tax, cdc charges based on price and quantity
+        function updateCharges() {
+            const quantity = parseFloat(document.getElementById('id_quantity').value) || 0;
+            const price = parseFloat(document.getElementById('id_price').value) || 0;
+            const helperBox = document.querySelector('.charges-helper');
+            
+            if (quantity > 0 && price > 0) {
+                const totalAmount = quantity * price;
+                const commissionRate = 0.0015;  // 0.2%
+                const salesTaxRate = 0.000225;   // 0.15%
+                const cdcRate = 0.005;        // 0.01%
+                
+                const suggestedCommission = totalAmount * commissionRate;
+                const suggestedSalesTax = totalAmount * salesTaxRate;
+                const suggestedCdcCharges = quantity * cdcRate;
+                
+                // Update helper text
+                document.getElementById('suggestedCommission').textContent = `Rs. ${suggestedCommission.toFixed(2)}`;
+                document.getElementById('suggestedSalesTax').textContent = `Rs. ${suggestedSalesTax.toFixed(2)}`;
+                document.getElementById('suggestedCdcCharges').textContent = `Rs. ${suggestedCdcCharges.toFixed(2)}`;
+                
+                // Show helper box
+                helperBox.style.display = 'block';
+            } else {
+                // Hide helper box if no valid quantity/price
+                helperBox.style.display = 'none';
+            }
+        }
+
+        // Attach event listeners for live calculation
+        const quantityInput = document.getElementById('id_quantity');
+        const priceInput = document.getElementById('id_price');
+        
+        if (quantityInput) {
+            quantityInput.addEventListener('input', updateCharges);
+            quantityInput.addEventListener('change', updateCharges);
+        }
+        if (priceInput) {
+            priceInput.addEventListener('input', updateCharges);
+            priceInput.addEventListener('change', updateCharges);
+        }
+
+        // Initial calculation on page load
+        updateCharges();
     });
 </script>
 
@@ -181,5 +285,8 @@
         background-color: #f8f9fa;
         color: #0d6efd;
     }
+    .charges-helper {
+        display: none;
+    }
 </style>
-{% endblock %}
+{% endblock content %}

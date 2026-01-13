@@ -2,6 +2,7 @@
 {% load humanize %}
 
 {% block content %}
+{% csrf_token %}
 <div class="container-fluid px-0">
     <!-- Hero Section -->
     <div class="bg-gradient-dark text-white py-5" style="border-radius: 5px; background: linear-gradient(135deg, #2b3035 0%, #566387 100%);">
@@ -106,31 +107,108 @@
                     </div>
                 </div>
             </div>
+            
+            <!-- Market Data Cache Status Widget -->
+            <div class="col-12">
+                <div class="card shadow-sm border-0 h-100 
+                     {% if cache_status.cached %}border-success{% else %}border-warning{% endif %}">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="text-uppercase text-muted mb-2">
+                                    <i class="bi bi-database me-2"></i>Market Data Cache Status
+                                </h6>
+                                {% if cache_status.cached %}
+                                    <h5 class="mb-0 text-success">
+                                        <i class="bi bi-check-circle me-2"></i>Cache Active
+                                    </h5>
+                                    <small class="text-muted">
+                                        Data Points: {{ cache_status.data_count }} | 
+                                        {% if cache_status.ttl_minutes != 'unknown' %}
+                                            Next Refresh: <span id="cacheTimer" data-ttl="{{ cache_status.ttl_seconds }}">{{ cache_status.ttl_minutes }} minutes</span>
+                                        {% else %}
+                                            Next Refresh: <span id="cacheTimer" data-ttl="3600">1 hour (default)</span>
+                                        {% endif %}
+                                    </small>
+                                {% else %}
+                                    <h5 class="mb-0 text-warning">
+                                        <i class="bi bi-exclamation-triangle me-2"></i>Cache Empty/Expired
+                                    </h5>
+                                    <small class="text-muted">Market data will be fetched on next request</small>
+                                {% endif %}
+                            </div>
+                            <div class="text-end">
+                                <button id="refreshCacheBtn" class="btn btn-sm btn-outline-primary" onclick="refreshMarketCache()">
+                                    <i class="bi bi-arrow-clockwise me-1"></i>Refresh Now
+                                </button>
+                                <div id="refreshStatus" class="mt-2" style="display: none;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            {% comment %} <!-- Snapshot Status Widget -->
+            {% if request.snapshot_status %}
+                <div class="col-12">
+                    <div class="card shadow-sm border-0 h-100 
+                         {% if request.snapshot_status.should_generate %}border-warning{% elif request.snapshot_status.this_month_snapshot %}border-success{% else %}border-info{% endif %}">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-uppercase text-muted mb-2">
+                                        <i class="bi bi-graph-up-arrow me-2"></i>Monthly Snapshot Status
+                                    </h6>
+                                    {% if request.snapshot_status.should_generate %}
+                                        <h5 class="mb-0 text-warning">
+                                            <i class="bi bi-clock me-2"></i>Ready to Generate
+                                        </h5>
+                                        <small class="text-muted">Last day of month after 4 PM - will be generated automatically</small>
+                                    {% elif request.snapshot_status.this_month_snapshot %}
+                                        <h5 class="mb-0 text-success">
+                                            <i class="bi bi-check-circle me-2"></i>Generated for {{ request.snapshot_status.this_month_snapshot.snapshot_date|date:"F Y" }}
+                                        </h5>
+                                        <small class="text-muted">
+                                            Portfolio: Rs. {{ request.snapshot_status.this_month_snapshot.total_portfolio_value|floatformat:0 }}, 
+                                            P&L: Rs. {{ request.snapshot_status.this_month_snapshot.total_profit_loss|floatformat:0 }}
+                                        </small>
+                                    {% else %}
+                                        <h5 class="mb-0 text-info">
+                                            <i class="bi bi-calendar me-2"></i>Next Snapshot: End of Month
+                                        </h5>
+                                        <small class="text-muted">Automatic generation on last day after 4 PM</small>
+                                    {% endif %}
+                                </div>
+                                <div class="text-end">
+                                    <a href="{% url 'portfolio_snapshots' %}" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-eye me-1"></i>View Snapshots
+                                    </a>
+                                    {% if request.snapshot_status.should_generate %}
+                                        <a href="{% url 'generate_snapshot' %}" class="btn btn-sm btn-warning ms-2">
+                                            <i class="bi bi-plus me-1"></i>Generate Now
+                                        </a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %} {% endcomment %}
         </div>
     </div>
 
-    <!-- Performance Chart Section -->
+    <!-- Portfolio Growth Chart Section -->
     <div class="container mt-5">
         <div class="card shadow-sm border-0 overflow-hidden">
             <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center flex-wrap">
                 <div>
-                    <h5 class="mb-0"><i class="bi bi-speedometer2 me-2"></i>Portfolio Performance</h5>
-                    <p class="text-muted small mb-0">Last 6 months vs NIFTY 50</p>
-                </div>
-                <div class="dropdown mt-2 mt-md-0">
-                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                        <i class="bi bi-calendar-week me-1"></i> Last 6 Months
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li><button class="dropdown-item range-btn active" data-range="6m">Last 6 Months</button></li>
-                        <li><button class="dropdown-item range-btn" data-range="1y">Last Year</button></li>
-                        <li><button class="dropdown-item range-btn" data-range="all">All Time</button></li>
-                    </ul>
+                    <h5 class="mb-0"><i class="bi bi-graph-up-arrow me-2"></i>Portfolio Growth Over Time</h5>
+                    <p class="text-muted small mb-0">Track your portfolio's growth journey and investment progress</p>
                 </div>
             </div>
             <div class="card-body p-0">
                 <div class="chart-container" style="position: relative; height: 400px;">
-                    <canvas id="performanceChart"></canvas>
+                    <canvas id="portfolioGrowthChart"></canvas>
                 </div>
             </div>
         </div>
@@ -163,9 +241,9 @@
                             <div class="holding-item mb-3">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div class="d-flex align-items-center">
-                                        <div class="symbol-circle bg-primary bg-opacity-10 me-3">
+                                        {% comment %} <div class="symbol-circle bg-primary bg-opacity-10 me-3">
                                             {{ stock.symbol }}
-                                        </div>
+                                        </div> {% endcomment %}
                                         <div>
                                             <strong>{{ stock.name }}</strong>
                                             <div class="text-muted small">{{ stock.sector }}</div>
@@ -173,8 +251,13 @@
                                     </div>
                                     <div class="text-end">
                                         <div class="fw-bold">Rs. {{ stock.value|intcomma }}</div>
-                                        <div class="text-success small">
-                                            {{ stock.quantity|default:'0' }} shares
+                                        <div class="small">
+                                            <span class="text-muted">Market: Rs. {{ stock.current_price|floatformat:2 }}</span>
+                                            <br>
+                                            <span class="{% if stock.profit_loss >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                                P&L: Rs. {{ stock.profit_loss|floatformat:0 }}
+                                            </span>
+                                            <span class="text-muted">({{ stock.quantity|default:'0' }} shares)</span>
                                         </div>
                                     </div>
                                 </div>
@@ -197,63 +280,77 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.canvasjs.com/canvasjs.min.js"></script>
 <script>
-// Chart.js for Portfolio Performance
+// Chart.js for Portfolio Growth Over Time
 
 document.addEventListener('DOMContentLoaded', function() {
-    const perfCtx = document.getElementById('performanceChart').getContext('2d');
-    const performanceLabels = JSON.parse('{{ performance_labels_json|escapejs }}');
-    const performanceDatasets = JSON.parse('{{ performance_datasets_json|escapejs }}');
-    const performanceChart = new Chart(perfCtx, {
-        type: 'line',
-        data: {
-            labels: performanceLabels,
-            datasets: performanceDatasets
-        },
-        options: {
-            maintainAspectRatio: false,
-            responsive: true,
-            plugins: {
-                legend: {
-                    position: 'top',
-                    labels: {
-                        usePointStyle: true,
-                        padding: 20
-                    }
+    // Fetch chart data
+    fetch('{% url "portfolio_growth_chart_data" %}')
+        .then(response => response.json())
+        .then(data => {
+            const ctx = document.getElementById('portfolioGrowthChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.labels,
+                    datasets: [
+                        {
+                            label: 'Portfolio Value',
+                            data: data.portfolio_data,
+                            borderColor: '#4e73df',
+                            backgroundColor: 'rgba(78, 115, 223, 0.1)',
+                            borderWidth: 3,
+                            tension: 0.4,
+                            fill: true
+                        },
+                        {
+                            label: 'Invested Amount',
+                            data: data.invested_data,
+                            borderColor: '#858796',
+                            backgroundColor: 'rgba(133, 135, 150, 0.1)',
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            tension: 0.4,
+                            fill: false
+                        },
+                        {
+                            label: 'Profit/Loss',
+                            data: data.profit_loss_data,
+                            borderColor: '#1cc88a',
+                            backgroundColor: 'rgba(28, 200, 138, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.4,
+                            fill: false
+                        }
+                    ]
                 },
-                tooltip: {
-                    mode: 'index',
-                    intersect: false,
-                    callbacks: {
-                        label: function(context) {
-                            let label = context.dataset.label || '';
-                            if (label) label += ': ';
-                            if (context.parsed.y !== null) {
-                                label += context.parsed.y + '%';
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return 'Rs. ' + value.toLocaleString();
+                                }
                             }
-                            return label;
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': Rs. ' + context.parsed.y.toLocaleString();
+                                }
+                            }
                         }
                     }
                 }
-            },
-            scales: {
-                x: {
-                    grid: { display: false }
-                },
-                y: {
-                    beginAtZero: false,
-                    ticks: {
-                        callback: function(value) { return value + '%'; }
-                    },
-                    grid: { color: 'rgba(0, 0, 0, 0.05)' }
-                }
-            },
-            interaction: {
-                mode: 'nearest',
-                axis: 'x',
-                intersect: false
-            }
-        }
-    });
+            });
+        })
+        .catch(error => {
+            console.error('Error loading chart data:', error);
+        });
 });
 
 // CanvasJS for Sector Allocation
@@ -269,7 +366,7 @@ function renderSectorChart() {
         data: [{
             type: "pie",
             toolTipContent: "{name}: <strong>{y}%</strong>",
-            indexLabel: "{name} - {y}%",
+            indexLabel: "{symbol} - {y}%",
             dataPoints: sectorData
         }]
     });
@@ -286,6 +383,98 @@ function renderSectorChart() {
 }
 
 document.addEventListener('DOMContentLoaded', renderSectorChart);
+
+// Cache Timer and Refresh Functionality
+let cacheTimerInterval;
+
+function startCacheTimer() {
+    const timerElement = document.getElementById('cacheTimer');
+    if (!timerElement) return;
+    
+    const ttlSeconds = parseInt(timerElement.dataset.ttl) || 3600;
+    let remainingSeconds = ttlSeconds;
+    
+    function updateTimer() {
+        if (remainingSeconds <= 0) {
+            timerElement.textContent = 'Expired - Refresh needed';
+            timerElement.className = 'text-danger';
+            clearInterval(cacheTimerInterval);
+            return;
+        }
+        
+        const hours = Math.floor(remainingSeconds / 3600);
+        const minutes = Math.floor((remainingSeconds % 3600) / 60);
+        const seconds = remainingSeconds % 60;
+        
+        if (hours > 0) {
+            timerElement.textContent = `${hours}h ${minutes}m ${seconds}s`;
+        } else if (minutes > 0) {
+            timerElement.textContent = `${minutes}m ${seconds}s`;
+        } else {
+            timerElement.textContent = `${seconds}s`;
+        }
+        
+        remainingSeconds--;
+    }
+    
+    updateTimer();
+    cacheTimerInterval = setInterval(updateTimer, 1000);
+}
+
+function refreshMarketCache() {
+    const btn = document.getElementById('refreshCacheBtn');
+    const statusDiv = document.getElementById('refreshStatus');
+    
+    // Disable button and show loading
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-arrow-clockwise spin me-1"></i>Refreshing...';
+    statusDiv.style.display = 'block';
+    statusDiv.innerHTML = '<div class="alert alert-info">Refreshing market data cache...</div>';
+    
+    // Make AJAX request
+    fetch('{% url "refresh_market_cache" %}', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            statusDiv.innerHTML = `<div class="alert alert-success">${data.message}</div>`;
+            // Restart timer with new TTL
+            if (data.cache_status && data.cache_status.cached) {
+                const timerElement = document.getElementById('cacheTimer');
+                if (timerElement) {
+                    timerElement.dataset.ttl = data.cache_status.ttl_seconds || 3600;
+                    clearInterval(cacheTimerInterval);
+                    startCacheTimer();
+                }
+            }
+        } else {
+            statusDiv.innerHTML = `<div class="alert alert-danger">${data.message}</div>`;
+        }
+    })
+    .catch(error => {
+        statusDiv.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+    })
+    .finally(() => {
+        // Re-enable button
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>Refresh Now';
+        
+        // Hide status after 5 seconds
+        setTimeout(() => {
+            statusDiv.style.display = 'none';
+        }, 5000);
+    });
+}
+
+// Start timer when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    startCacheTimer();
+});
 </script>
 
 <style>
@@ -342,6 +531,16 @@ document.addEventListener('DOMContentLoaded', renderSectorChart);
     .progress {
         border-radius: 3px;
         background-color: rgba(0, 0, 0, 0.05);
+    }
+    
+    /* Spinning animation for refresh button */
+    .spin {
+        animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
     }
     
     /* Mobile Responsive Styles */

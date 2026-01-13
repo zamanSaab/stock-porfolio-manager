@@ -1,12 +1,22 @@
-from pathlib import Path
 import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / "db.sqlite3",
+        'ENGINE': os.getenv('DB_ENGINE', 'django.db.backends.sqlite3'),
+        'NAME': os.getenv('DB_NAME', BASE_DIR / 'db.sqlite3'),
+        'USER': os.getenv('DB_USER', ''),
+        'PASSWORD': os.getenv('DB_PASSWORD', ''),
+        'HOST': os.getenv('DB_HOST', ''),
+        'OPTIONS': {
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+        } if os.getenv('DB_ENGINE') == 'django.db.backends.mysql' else {}
     }
 }
 
@@ -32,6 +42,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'stocks.middleware.MonthlySnapshotMiddleware',
+    'stocks.middleware.SnapshotStatusMiddleware',
 ]
 
 ROOT_URLCONF = 'stock_portfolio.urls'
@@ -90,6 +102,13 @@ SECRET_KEY = 'your-secret-key-here'
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap4"
 CRISPY_TEMPLATE_PACK = "bootstrap4"
 
+# Cache configuration for monthly snapshots
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'unique-snowflake',
+    }
+}
 
 LOGIN_URL = "/login/"
 LOGIN_REDIRECT_URL = "/"
